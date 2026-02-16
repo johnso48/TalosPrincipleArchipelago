@@ -3,7 +3,7 @@ from typing import Dict, List
 from BaseClasses import Entrance, Item, ItemClassification, Region, Tutorial
 from worlds.AutoWorld import WebWorld, World
 
-from .Items import TETROMINOES, TalosPrincipleItem, item_groups, item_table
+from .Items import TETROMINO_COUNTS, TalosPrincipleItem, item_groups, item_table
 from .Locations import (
     MAIN_LOCATIONS,
     REGION_WORLD_A,
@@ -56,7 +56,10 @@ class TalosPrincipleWorld(World):
 
     def generate_early(self) -> None:
         """Pre-collect starting tetrominoes if the option is set."""
-        self.tetromino_pool: List[str] = list(TETROMINOES)
+        # Build full pool of 89 tetromino instances
+        self.tetromino_pool: List[str] = []
+        for name, count in TETROMINO_COUNTS.items():
+            self.tetromino_pool.extend([name] * count)
 
         starting_count = self.options.starting_tetromino_count.value
         if starting_count > 0:
