@@ -16,7 +16,7 @@ class TalosPrincipleItem(Item):
 BASE_ID = 0x540000  # 5505024
 
 # Tetromino definitions: {name: count}
-# 21 unique color+shape combinations, 89 total pieces
+# 21 unique color+shape combinations, 90 total pieces
 TETROMINO_COUNTS = {
     # Green pieces (18 total)
     "Green J": 5,
@@ -32,10 +32,10 @@ TETROMINO_COUNTS = {
     "Golden J": 1,
     "Golden O": 1,
     "Golden I": 1,
-    # Red pieces (48 total)
+    # Red pieces (49 total)
     "Red L": 10,
     "Red Z": 6,
-    "Red T": 11,
+    "Red T": 12,
     "Red I": 6,
     "Red J": 4,
     "Red O": 7,
