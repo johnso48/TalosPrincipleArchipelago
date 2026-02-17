@@ -85,7 +85,8 @@ for i, tetromino in enumerate(TETROMINOES):
     )
 
 # Filler item (used when starting tetrominoes are pre-collected)
-item_table["Nothing"] = ItemData(None, ItemClassification.filler)
+FILLER_OFFSET = len(TETROMINOES)
+item_table["Nothing"] = ItemData(BASE_ID + FILLER_OFFSET, ItemClassification.filler)
 
 
 # ── Item groups for hinting ────────────────────────────────────────────────
