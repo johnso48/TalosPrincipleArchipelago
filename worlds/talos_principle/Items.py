@@ -84,6 +84,9 @@ for i, tetromino in enumerate(TETROMINOES):
         ItemClassification.progression,
     )
 
+# Filler item (used when starting tetrominoes are pre-collected)
+item_table["Nothing"] = ItemData(None, ItemClassification.filler)
+
 
 # ── Item groups for hinting ────────────────────────────────────────────────
 

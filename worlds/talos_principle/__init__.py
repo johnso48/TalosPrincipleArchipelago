@@ -138,4 +138,4 @@ class TalosPrincipleWorld(World):
         }
 
     def get_filler_item_name(self) -> str:
-        return self.random.choice(["Energy Refill", "Time Extension", "Hint"])
+        return "Nothing"
