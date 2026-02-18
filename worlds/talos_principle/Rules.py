@@ -89,7 +89,30 @@ def has_requirements(
     Each tool flag adds that tool's golden cost **and** ensures its gate
     prerequisite is also open.  Since pieces are single-use the costs are
     **summed**, not max'd.
+
+    **Tool pairing:** Connector & Hexahedron share the golden pool at A1
+    Gate level; Fans & Playback share the golden pool at B Gate level.
+    Because the player can unlock either tool of a pair first, requesting
+    *one* tool of a pair automatically budgets for *both* to prevent
+    false-positive reachability (the player could have already spent
+    pieces on the partner tool).
     """
+
+    # ── Pair tools that share a golden-tetromino pool ────────────────
+    # Connector & Hexahedron are both purchasable at A1 Gate level.
+    # Fans & Playback are both purchasable at B Gate level.
+    # Since golden tetrominoes are single-use, the player can unlock
+    # either tool of a pair first.  If the logic only budgets for one
+    # tool, the player could have already spent those pieces on its
+    # partner, leaving the checked tool unaffordable.  Budgeting for
+    # the whole pair prevents the tracker from marking both sets of
+    # locations as reachable when the player can only afford one.
+    if connector or hexahedron:
+        connector = True
+        hexahedron = True
+    if fans or playback:
+        fans = True
+        playback = True
 
     # ── Which gates must be open? ─────────────────────────────────────
     need_a1 = a1_gate or in_region in ("a", "b", "c")
