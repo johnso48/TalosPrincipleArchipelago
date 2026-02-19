@@ -316,6 +316,9 @@ def set_location_rules(world) -> None:
              lambda state: has_requirements(state, player, in_region="b",
                                             hexahedron=True, connector=True,
                                             fans=True))
+    set_rule(loc("World B3 Red T"),
+             lambda state: has_requirements(state, player, in_region="b",
+                                            hexahedron=True, fans=True))
     set_rule(loc("World B3 Red L"),
              lambda state: has_requirements(state, player, in_region="b",
                                             hexahedron=True, fans=True))
