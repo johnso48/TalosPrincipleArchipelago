@@ -1,5 +1,5 @@
 """
-Access rules for The Talos Principle randomiser.
+Access rules for The Talos Principle Reawakened randomiser.
 
 Tetrominoes are **single-use** – each piece is consumed when placed in a
 gate, tool panel, or tower door.  Logic checks must verify the player has
@@ -13,7 +13,7 @@ Gate cost summary (Green pieces, cumulative along the chain):
   A1 Gate:               2J + 1Z
   + A Gate:            + 1J + 1I + 1L + 1Z            = 3J + 2Z + 1I + 1L
   + B Gate (from A):   + 2T + 1Z + 1I + 1L            = 3J + 3Z + 2I + 2L + 2T
-  + C Gate (from A):   + 2T + 2J + 1L + 1Z            = 5J + 3Z + 1I + 2L + 2T
+  + C Gate (from B):   + 2T + 2J + 1L + 1Z            = 5J + 4Z + 2I + 3L + 4T
   All four gates:                                        5J + 4Z + 2I + 3L + 4T
 
 Tool cost summary (Golden pieces, each an independent purchase):
@@ -67,6 +67,7 @@ def _count(state: CollectionState, player: int, items: list[str]) -> int:
 def has_requirements(
     state: CollectionState,
     player: int,
+    reusable: bool = False,
     in_region: str | None = None,
     a1_gate: bool = False,
     connector: bool = False,
@@ -75,8 +76,8 @@ def has_requirements(
     playback: bool = False,
     platform: bool = False,
 ) -> bool:
-    """Check that the player has enough *cumulative* pieces for all gates
-    and tools on the path to a particular location.
+    """Check that the player has enough pieces for all gates and tools on
+    the path to a particular location.
 
     ``in_region`` encodes which gate chain is needed just to *enter* the
     location's region:
@@ -84,40 +85,25 @@ def has_requirements(
     * ``"a1"``  – World A1 (no gate)
     * ``"a"``   – World A  (A1 Gate)
     * ``"b"``   – World B  (A1 + A + B Gates)
-    * ``"c"``   – World C  (A1 + A + C Gates)
+    * ``"c"``   – World C  (A1 + A + B + C Gates)
 
     Each tool flag adds that tool's golden cost **and** ensures its gate
-    prerequisite is also open.  Since pieces are single-use the costs are
-    **summed**, not max'd.
+    prerequisite is also open.
 
-    **Tool pairing:** Connector & Hexahedron share the golden pool at A1
-    Gate level; Fans & Playback share the golden pool at B Gate level.
-    Because the player can unlock either tool of a pair first, requesting
-    *one* tool of a pair automatically budgets for *both* to prevent
-    false-positive reachability (the player could have already spent
-    pieces on the partner tool).
+    When ``reusable`` is False (default / single-use mode) costs are
+    **summed** across every gate and tool on the path.  **Tool pairing**
+    is also applied: Connector & Hexahedron share a golden pool, as do
+    Fans & Playback, so requesting one of a pair budgets for both.
+
+    When ``reusable`` is True pieces are returned after use, so only the
+    costliest *individual* gate / tool matters.  No pair-budgeting is
+    needed because the player can re-use pieces for each tool separately.
     """
-
-    # ── Pair tools that share a golden-tetromino pool ────────────────
-    # Connector & Hexahedron are both purchasable at A1 Gate level.
-    # Fans & Playback are both purchasable at B Gate level.
-    # Since golden tetrominoes are single-use, the player can unlock
-    # either tool of a pair first.  If the logic only budgets for one
-    # tool, the player could have already spent those pieces on its
-    # partner, leaving the checked tool unaffordable.  Budgeting for
-    # the whole pair prevents the tracker from marking both sets of
-    # locations as reachable when the player can only afford one.
-    if connector or hexahedron:
-        connector = True
-        hexahedron = True
-    if fans or playback:
-        fans = True
-        playback = True
 
     # ── Which gates must be open? ─────────────────────────────────────
     need_a1 = a1_gate or in_region in ("a", "b", "c")
     need_a  = in_region in ("b", "c")
-    need_b  = in_region == "b"
+    need_b  = in_region in ("b", "c")  # reaching World C passes through the B gate
     need_c  = in_region == "c"
 
     # Tool gate prerequisites
@@ -128,20 +114,66 @@ def has_requirements(
     if platform:
         need_a1 = True; need_a = True; need_c = True
 
-    # ── Cumulative Green cost (gates) ─────────────────────────────────
-    gj = gz = gi = gl = gt = 0
-    if need_a1:  gj += 2; gz += 1                       # A1 Gate
-    if need_a:   gj += 1; gi += 1; gl += 1; gz += 1     # A Gate
-    if need_b:   gt += 2; gz += 1; gi += 1; gl += 1     # B Gate
-    if need_c:   gt += 2; gj += 2; gl += 1; gz += 1     # C Gate
+    if reusable:
+        # ── Reusable mode: pieces are returned after use ──────────────
+        # Green: player only needs enough for the costliest single gate.
+        gate_costs: list[dict] = []
+        if need_a1: gate_costs.append({"j": 2, "z": 1})
+        if need_a:  gate_costs.append({"j": 1, "z": 1, "i": 1, "l": 1})
+        if need_b:  gate_costs.append({"t": 2, "z": 1, "i": 1, "l": 1})
+        if need_c:  gate_costs.append({"t": 2, "j": 2, "l": 1, "z": 1})
+        gj = max((g.get("j", 0) for g in gate_costs), default=0)
+        gz = max((g.get("z", 0) for g in gate_costs), default=0)
+        gi = max((g.get("i", 0) for g in gate_costs), default=0)
+        gl = max((g.get("l", 0) for g in gate_costs), default=0)
+        gt = max((g.get("t", 0) for g in gate_costs), default=0)
 
-    # ── Cumulative Golden cost (tools) ────────────────────────────────
-    mt = ml = mz = ms = mj = mi = mo = 0
-    if connector:   mt += 2; ml += 1
-    if hexahedron:  mt += 2; ml += 1; mz += 1
-    if fans:        mt += 2; ml += 1; mz += 1; ms += 1
-    if playback:    mt += 2; mj += 1; ms += 1; mz += 1
-    if platform:    mt += 2; ml += 1; mz += 1; mi += 1; mo += 1
+        # Golden: no pair-budgeting — max per piece across requested tools.
+        tool_costs: list[dict] = []
+        if connector:  tool_costs.append({"t": 2, "l": 1})
+        if hexahedron: tool_costs.append({"t": 2, "l": 1, "z": 1})
+        if fans:       tool_costs.append({"t": 2, "l": 1, "z": 1, "s": 1})
+        if playback:   tool_costs.append({"t": 2, "j": 1, "s": 1, "z": 1})
+        if platform:   tool_costs.append({"t": 2, "l": 1, "z": 1, "i": 1, "o": 1})
+        mt = max((c.get("t", 0) for c in tool_costs), default=0)
+        ml = max((c.get("l", 0) for c in tool_costs), default=0)
+        mz = max((c.get("z", 0) for c in tool_costs), default=0)
+        ms = max((c.get("s", 0) for c in tool_costs), default=0)
+        mj = max((c.get("j", 0) for c in tool_costs), default=0)
+        mi = max((c.get("i", 0) for c in tool_costs), default=0)
+        mo = max((c.get("o", 0) for c in tool_costs), default=0)
+    else:
+        # ── Single-use mode: pieces are consumed ──────────────────────
+        # Pair tools that share a golden-tetromino pool.
+        # Connector & Hexahedron are both purchasable at A1 Gate level.
+        # Fans & Playback are both purchasable at B Gate level.
+        # Since golden tetrominoes are single-use, the player can unlock
+        # either tool of a pair first.  If the logic only budgets for one
+        # tool, the player could have already spent those pieces on its
+        # partner, leaving the checked tool unaffordable.  Budgeting for
+        # the whole pair prevents the tracker from marking both sets of
+        # locations as reachable when the player can only afford one.
+        if connector or hexahedron:
+            connector = True
+            hexahedron = True
+        if fans or playback:
+            fans = True
+            playback = True
+
+        # Cumulative Green cost (gates)
+        gj = gz = gi = gl = gt = 0
+        if need_a1:  gj += 2; gz += 1                       # A1 Gate
+        if need_a:   gj += 1; gi += 1; gl += 1; gz += 1     # A Gate
+        if need_b:   gt += 2; gz += 1; gi += 1; gl += 1     # B Gate
+        if need_c:   gt += 2; gj += 2; gl += 1; gz += 1     # C Gate
+
+        # Cumulative Golden cost (tools)
+        mt = ml = mz = ms = mj = mi = mo = 0
+        if connector:   mt += 2; ml += 1
+        if hexahedron:  mt += 2; ml += 1; mz += 1
+        if fans:        mt += 2; ml += 1; mz += 1; ms += 1
+        if playback:    mt += 2; mj += 1; ms += 1; mz += 1
+        if platform:    mt += 2; ml += 1; mz += 1; mi += 1; mo += 1
 
     return (
         _count(state, player, GREEN_J)  >= gj and
@@ -163,21 +195,39 @@ def has_requirements(
 #  Ascension (Tower) – cumulative red-piece check
 # ═══════════════════════════════════════════════════════════════════════════
 
-def can_ascend(state: CollectionState, player: int) -> bool:
+def can_ascend(state: CollectionState, player: int, reusable: bool = False) -> bool:
     """Ascension goal – climb all 5 tower floors.
 
     Requires:
       * World A Gate for tower access
       * All five tools (Connector, Hexahedron, Fans, Playback, Platform)
-      * Enough red pieces for all 5 doors (cumulative, single-use)
+      * Enough red pieces for all 5 doors
+
+    In single-use mode the red cost is the cumulative total across all five
+    floors (12T/10L/6Z/6I/4J/7O/4S).  In reusable mode only the costliest
+    individual floor matters (4T/4L/2Z/4I/2J/4O/2S).
     """
     # Tools automatically pull in gates: A1+A (Connector/Hex) + B (Fans/Playback) + C (Platform)
     if not has_requirements(
-        state, player, in_region="a",
+        state, player, reusable=reusable, in_region="a",
         connector=True, hexahedron=True,
         fans=True, playback=True, platform=True,
     ):
         return False
+
+    if reusable:
+        # Max pieces needed for any single tower-floor door:
+        #   F1: 2L 2Z  |  F2: 4T 4L 1O  |  F3: 4I 2J 2L 1Z 1S
+        #   F4: 4T 2O 1J 1L 2S 2Z  |  F5: 4T 4O 2I 1J 1L 1Z 1S
+        return (
+            _count(state, player, RED_T) >= 4 and
+            _count(state, player, RED_L) >= 4 and
+            _count(state, player, RED_Z) >= 2 and
+            _count(state, player, RED_I) >= 4 and
+            _count(state, player, RED_J) >= 2 and
+            _count(state, player, RED_O) >= 4 and
+            _count(state, player, RED_S) >= 2
+        )
 
     return (
         _count(state, player, RED_T)  >= 12 and
@@ -198,45 +248,44 @@ def set_rules(world) -> None:
     """Set entrance rules and the victory condition."""
     player = world.player
     multiworld = world.multiworld
+    reusable = bool(world.options.reusable_tetrominos.value)
 
-    # ── Entrance rules (cumulative Green for the gate chain) ──────────
-    # World A1 → World A: A1 Gate = 2J + 1Z
+    # ── Entrance rules ────────────────────────────────────────────────
     multiworld.get_entrance("World A1 -> World A", player).access_rule = \
-        lambda state: has_requirements(state, player, in_region="a")
+        lambda state: has_requirements(state, player, reusable=reusable, in_region="a")
 
-    # World A → World B: A1 + A + B Gates = 3J + 3Z + 2I + 2L + 2T
     multiworld.get_entrance("World A -> World B", player).access_rule = \
-        lambda state: has_requirements(state, player, in_region="b")
+        lambda state: has_requirements(state, player, reusable=reusable, in_region="b")
 
-    # World A → World C: A1 + A + C Gates = 5J + 3Z + 1I + 2L + 2T
     multiworld.get_entrance("World A -> World C", player).access_rule = \
-        lambda state: has_requirements(state, player, in_region="c")
+        lambda state: has_requirements(state, player, reusable=reusable, in_region="c")
 
     # ── Victory condition ─────────────────────────────────────────────
     goal = world.options.goal_requirement.value
 
     if goal == 1:  # Ascension
         multiworld.completion_condition[player] = \
-            lambda state: can_ascend(state, player)
+            lambda state: can_ascend(state, player, reusable=reusable)
     else:  # Transcendence – reach World C + all tetrominoes
         total_tetrominoes = sum(TETROMINO_COUNTS.values())
         multiworld.completion_condition[player] = \
             lambda state: (
-                has_requirements(state, player, in_region="c") and
+                has_requirements(state, player, reusable=reusable, in_region="c") and
                 sum(_count(state, player, [name] * count)
                     for name, count in TETROMINO_COUNTS.items()) >= total_tetrominoes
             )
 
 
 def set_location_rules(world) -> None:
-    """Set per-location access rules accounting for single-use consumption.
+    """Set per-location access rules.
 
-    Each rule uses ``has_requirements`` which computes the *total* Green and
-    Golden pieces the player must have received to open every gate and tool
-    on the path to that location.
+    Each rule uses ``has_requirements`` with the ``reusable`` flag forwarded
+    from the world options, so logic correctly reflects either cumulative
+    (single-use) or max-per-gate/tool (reusable) piece requirements.
     """
     player = world.player
     multiworld = world.multiworld
+    reusable = bool(world.options.reusable_tetrominos.value)
 
     def loc(name: str):
         return multiworld.get_location(name, player)
@@ -244,177 +293,177 @@ def set_location_rules(world) -> None:
     # ── World A1 – two locations behind the A1 Gate ───────────────────
     for name in ["World A1 Golden L", "World A1 Green I"]:
         set_rule(loc(name),
-                 lambda state: has_requirements(state, player, a1_gate=True))
+                 lambda state: has_requirements(state, player, reusable=reusable, a1_gate=True))
 
     # ── World A4 – Connector ──────────────────────────────────────────
     for name in ["World A4 Golden Z 1", "World A4 Golden Z 2",
                  "World A4 Golden T 1", "World A4 Golden T 2"]:
         set_rule(loc(name),
-                 lambda state: has_requirements(state, player, in_region="a",
+                 lambda state: has_requirements(state, player, reusable=reusable, in_region="a",
                                                 connector=True))
 
     # ── World A5 ──────────────────────────────────────────────────────
     for name in ["World A5 Red Z", "World A5 Green I"]:
         set_rule(loc(name),
-                 lambda state: has_requirements(state, player, in_region="a",
+                 lambda state: has_requirements(state, player, reusable=reusable, in_region="a",
                                                 hexahedron=True))
     for name in ["World A5 Green T 1", "World A5 Green T 2", "World A5 Green L"]:
         set_rule(loc(name),
-                 lambda state: has_requirements(state, player, in_region="a",
+                 lambda state: has_requirements(state, player, reusable=reusable, in_region="a",
                                                 connector=True, hexahedron=True))
 
     # ── World A6 ──────────────────────────────────────────────────────
     set_rule(loc("World A6 Green Z"),
-             lambda state: has_requirements(state, player, in_region="a"))
+             lambda state: has_requirements(state, player, reusable=reusable, in_region="a"))
     for name in ["World A6 Red L 1", "World A6 Red Z"]:
         set_rule(loc(name),
-                 lambda state: has_requirements(state, player, in_region="a",
+                 lambda state: has_requirements(state, player, reusable=reusable, in_region="a",
                                                 connector=True))
     set_rule(loc("World A6 Red L 2"),
-             lambda state: has_requirements(state, player, in_region="a",
+             lambda state: has_requirements(state, player, reusable=reusable, in_region="a",
                                             connector=True, hexahedron=True))
 
     # ── World A7 ──────────────────────────────────────────────────────
     for name in ["World A7 Green L", "World A7 Red T",
                  "World A7 Red O", "World A7 Green T"]:
         set_rule(loc(name),
-                 lambda state: has_requirements(state, player, in_region="a",
+                 lambda state: has_requirements(state, player, reusable=reusable, in_region="a",
                                                 connector=True))
     set_rule(loc("World A7 Red L"),
-             lambda state: has_requirements(state, player, in_region="a",
+             lambda state: has_requirements(state, player, reusable=reusable, in_region="a",
                                             connector=True, hexahedron=True))
 
     # ── World B1 ──────────────────────────────────────────────────────
     for name in ["World B1 Golden L", "World B1 Golden Z", "World B1 Golden S"]:
         set_rule(loc(name),
-                 lambda state: has_requirements(state, player, in_region="b",
+                 lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
                                                 connector=True))
     for name in ["World B1 Golden T 1", "World B1 Golden T 2"]:
         set_rule(loc(name),
-                 lambda state: has_requirements(state, player, in_region="b",
+                 lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
                                                 hexahedron=True))
 
     # ── World B2 ──────────────────────────────────────────────────────
     set_rule(loc("World B2 Red L"),
-             lambda state: has_requirements(state, player, in_region="b"))
+             lambda state: has_requirements(state, player, reusable=reusable, in_region="b"))
     set_rule(loc("World B2 Golden S"),
-             lambda state: has_requirements(state, player, in_region="b",
+             lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
                                             connector=True))
     set_rule(loc("World B2 Golden T"),
-             lambda state: has_requirements(state, player, in_region="b",
+             lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
                                             hexahedron=True, fans=True))
     set_rule(loc("World B2 Golden Z"),
-             lambda state: has_requirements(state, player, in_region="b",
+             lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
                                             hexahedron=True, connector=True,
                                             fans=True))
 
     # ── World B3 ──────────────────────────────────────────────────────
     set_rule(loc("World B3 Golden T"),
-             lambda state: has_requirements(state, player, in_region="b",
+             lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
                                             hexahedron=True, fans=True))
     set_rule(loc("World B3 Golden J"),
-             lambda state: has_requirements(state, player, in_region="b",
+             lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
                                             hexahedron=True, connector=True,
                                             fans=True))
     set_rule(loc("World B3 Red T"),
-             lambda state: has_requirements(state, player, in_region="b",
+             lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
                                             hexahedron=True, fans=True))
     set_rule(loc("World B3 Red L"),
-             lambda state: has_requirements(state, player, in_region="b",
+             lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
                                             hexahedron=True, fans=True))
 
     # ── World B4 ──────────────────────────────────────────────────────
     set_rule(loc("World B4 Red T 1"),
-             lambda state: has_requirements(state, player, in_region="b",
+             lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
                                             hexahedron=True, connector=True))
     set_rule(loc("World B4 Red T 2"),
-             lambda state: has_requirements(state, player, in_region="b",
+             lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
                                             hexahedron=True, playback=True))
     set_rule(loc("World B4 Green T"),
-             lambda state: has_requirements(state, player, in_region="b",
+             lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
                                             playback=True))
     set_rule(loc("World B4 Green J"),
-             lambda state: has_requirements(state, player, in_region="b",
+             lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
                                             playback=True))
     set_rule(loc("World B4 Red L 1"),
-             lambda state: has_requirements(state, player, in_region="b",
+             lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
                                             hexahedron=True, connector=True,
                                             fans=True))
     set_rule(loc("World B4 Red L 2"),
-             lambda state: has_requirements(state, player, in_region="b",
+             lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
                                             playback=True, connector=True))
 
     # ── World B5 ──────────────────────────────────────────────────────
     set_rule(loc("World B5 Red I"),
-             lambda state: has_requirements(state, player, in_region="b",
+             lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
                                             hexahedron=True, connector=True,
                                             fans=True, playback=True))
     set_rule(loc("World B5 Red L"),
-             lambda state: has_requirements(state, player, in_region="b",
+             lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
                                             playback=True))
     set_rule(loc("World B5 Red S"),
-             lambda state: has_requirements(state, player, in_region="b",
+             lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
                                             hexahedron=True, connector=True,
                                             fans=True))
     set_rule(loc("World B5 Green J"),
-             lambda state: has_requirements(state, player, in_region="b",
+             lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
                                             hexahedron=True, connector=True,
                                             fans=True))
     set_rule(loc("World B5 Red Z"),
-             lambda state: has_requirements(state, player, in_region="b",
+             lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
                                             hexahedron=True, connector=True,
                                             fans=True))
 
     # ── World B6 ──────────────────────────────────────────────────────
     set_rule(loc("World B6 Red I"),
-             lambda state: has_requirements(state, player, in_region="b"))
+             lambda state: has_requirements(state, player, reusable=reusable, in_region="b"))
     for name in ["World B6 Golden T", "World B6 Golden L"]:
         set_rule(loc(name),
-                 lambda state: has_requirements(state, player, in_region="b",
+                 lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
                                                 connector=True))
 
     # ── World B7 ──────────────────────────────────────────────────────
     set_rule(loc("World B7 Red J"),
-             lambda state: has_requirements(state, player, in_region="b"))
+             lambda state: has_requirements(state, player, reusable=reusable, in_region="b"))
     set_rule(loc("World B7 Red I"),
-             lambda state: has_requirements(state, player, in_region="b",
+             lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
                                             hexahedron=True, connector=True,
                                             fans=True))
     set_rule(loc("World B7 Golden O"),
-             lambda state: has_requirements(state, player, in_region="b",
+             lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
                                             hexahedron=True))
     set_rule(loc("World B7 Golden I"),
-             lambda state: has_requirements(state, player, in_region="b",
+             lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
                                             connector=True))
 
     # ── World C1 ──────────────────────────────────────────────────────
     set_rule(loc("World C1 Red Z"),
-             lambda state: has_requirements(state, player, in_region="c",
+             lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
                                             hexahedron=True, connector=True,
                                             fans=True))
     set_rule(loc("World C1 Red J"),
-             lambda state: has_requirements(state, player, in_region="c",
+             lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
                                             hexahedron=True, connector=True,
                                             fans=True))
     set_rule(loc("World C1 Red I"),
-             lambda state: has_requirements(state, player, in_region="c",
+             lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
                                             connector=True))
     set_rule(loc("World C1 Red T"),
-             lambda state: has_requirements(state, player, in_region="c"))
+             lambda state: has_requirements(state, player, reusable=reusable, in_region="c"))
 
     # ── World C2 ──────────────────────────────────────────────────────
     set_rule(loc("World C2 Red Z"),
-             lambda state: has_requirements(state, player, in_region="c",
+             lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
                                             playback=True, platform=True))
     set_rule(loc("World C2 Red O"),
-             lambda state: has_requirements(state, player, in_region="c",
+             lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
                                             hexahedron=True, connector=True,
                                             playback=True, platform=True))
     set_rule(loc("World C2 Red T"),
-             lambda state: has_requirements(state, player, in_region="c",
+             lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
                                             hexahedron=True, connector=True))
     set_rule(loc("World C2 Red S"),
-             lambda state: has_requirements(state, player, in_region="c",
+             lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
                                             hexahedron=True, playback=True,
                                             platform=True))
 
@@ -422,64 +471,64 @@ def set_location_rules(world) -> None:
     for name in ["World C3 Red J", "World C3 Red O",
                  "World C3 Red Z", "World C3 Red T"]:
         set_rule(loc(name),
-                 lambda state: has_requirements(state, player, in_region="c",
+                 lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
                                                 hexahedron=True,
                                                 connector=True, fans=True))
 
     # ── World C4 ──────────────────────────────────────────────────────
     set_rule(loc("World C4 Red T 1"),
-             lambda state: has_requirements(state, player, in_region="c",
+             lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
                                             connector=True))
     set_rule(loc("World C4 Red I"),
-             lambda state: has_requirements(state, player, in_region="c",
+             lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
                                             hexahedron=True, connector=True))
     set_rule(loc("World C4 Red S"),
-             lambda state: has_requirements(state, player, in_region="c",
+             lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
                                             hexahedron=True, connector=True,
                                             playback=True, platform=True))
     set_rule(loc("World C4 Red T 2"),
-             lambda state: has_requirements(state, player, in_region="c",
+             lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
                                             hexahedron=True, connector=True,
                                             fans=True))
 
     # ── World C5 ──────────────────────────────────────────────────────
     set_rule(loc("World C5 Red I"),
-             lambda state: has_requirements(state, player, in_region="c",
+             lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
                                             hexahedron=True, connector=True,
                                             fans=True, playback=True))
     set_rule(loc("World C5 Red O 1"),
-             lambda state: has_requirements(state, player, in_region="c",
+             lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
                                             hexahedron=True, connector=True,
                                             playback=True))
     set_rule(loc("World C5 Red O 2"),
-             lambda state: has_requirements(state, player, in_region="c",
+             lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
                                             hexahedron=True, connector=True,
                                             fans=True))
     set_rule(loc("World C5 Red T"),
-             lambda state: has_requirements(state, player, in_region="c",
+             lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
                                             hexahedron=True, connector=True))
 
     # ── World C6 ──────────────────────────────────────────────────────
     set_rule(loc("World C6 Red S"),
-             lambda state: has_requirements(state, player, in_region="c"))
+             lambda state: has_requirements(state, player, reusable=reusable, in_region="c"))
     set_rule(loc("World C6 Red J"),
-             lambda state: has_requirements(state, player, in_region="c",
+             lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
                                             hexahedron=True, connector=True))
     set_rule(loc("World C6 Red O"),
-             lambda state: has_requirements(state, player, in_region="c",
+             lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
                                             connector=True, playback=True))
 
     # ── World C7 ──────────────────────────────────────────────────────
     set_rule(loc("World C7 Red T 1"),
-             lambda state: has_requirements(state, player, in_region="c",
+             lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
                                             hexahedron=True, connector=True,
                                             fans=True))
     set_rule(loc("World C7 Red O"),
-             lambda state: has_requirements(state, player, in_region="c",
+             lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
                                             hexahedron=True, fans=True))
     set_rule(loc("World C7 Red T 2"),
-             lambda state: has_requirements(state, player, in_region="c",
+             lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
                                             connector=True, playback=True))
     set_rule(loc("World C7 Red L"),
-             lambda state: has_requirements(state, player, in_region="c",
-                                            hexahedron=True, connector=True))
+             lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
+                                            hexahedron=True, connector=True, fans=True))

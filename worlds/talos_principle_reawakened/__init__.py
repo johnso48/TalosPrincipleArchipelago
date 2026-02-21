@@ -17,14 +17,14 @@ from .Rules import set_location_rules, set_rules
 
 
 class TalosPrincipleWeb(WebWorld):
-    """Web world configuration for The Talos Principle."""
+    """Web world configuration for The Talos Principle Reawakened."""
 
     theme = "stone"
 
     tutorials = [
         Tutorial(
             "Multiworld Setup Guide",
-            "A guide to setting up The Talos Principle for Archipelago.",
+            "A guide to setting up The Talos Principle Reawakened for Archipelago.",
             "English",
             "setup_en.md",
             "setup/en",
@@ -35,7 +35,7 @@ class TalosPrincipleWeb(WebWorld):
 
 class TalosPrincipleWorld(World):
     """
-    The Talos Principle is a philosophical first-person puzzle game from Croteam.
+    The Talos Principle Reawakened is a philosophical first-person puzzle game from Croteam.
     In this randomiser the 90 tetrominoes (sigils) required to progress are
     shuffled, creating a unique experience each playthrough.
 
@@ -44,7 +44,7 @@ class TalosPrincipleWorld(World):
       Ascension     – Climb to the top of the tower (all 5 floors).
     """
 
-    game = "The Talos Principle"
+    game = "The Talos Principle Reawakened"
     options_dataclass = TalosPrincipleOptions
     web = TalosPrincipleWeb()
 
@@ -135,6 +135,7 @@ class TalosPrincipleWorld(World):
     def fill_slot_data(self) -> Dict[str, any]:
         return {
             "goal_requirement": self.options.goal_requirement.value,
+            "reusable_tetrominos": self.options.reusable_tetrominos.value,
         }
 
     def get_filler_item_name(self) -> str:

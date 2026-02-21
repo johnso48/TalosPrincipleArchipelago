@@ -9,7 +9,7 @@ class ItemData(typing.NamedTuple):
 
 
 class TalosPrincipleItem(Item):
-    game: str = "The Talos Principle"
+    game: str = "The Talos Principle Reawakened"
 
 
 # Base item ID - must match client's BASE_ITEM_ID (0x540000)

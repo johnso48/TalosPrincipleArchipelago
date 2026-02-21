@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from Options import Choice, PerGameCommonOptions
+from Options import Choice, PerGameCommonOptions, Toggle
 
 
 class GoalRequirement(Choice):
@@ -29,7 +29,20 @@ class StartingTetrominoCount(Choice):
     default = 0
 
 
+class ReusableTetrominos(Toggle):
+    """
+    When enabled, tetrominoes are returned to the player after being placed in
+    a gate, tool panel, or tower door, making each piece reusable.
+
+    This dramatically reduces the number of tetrominoes required to reach any
+    goal (from 90 down to ~37).
+    """
+    display_name = "Reusable Tetrominos"
+    default = 0
+
+
 @dataclass
 class TalosPrincipleOptions(PerGameCommonOptions):
     goal_requirement: GoalRequirement
     starting_tetromino_count: StartingTetrominoCount
+    reusable_tetrominos: ReusableTetrominos

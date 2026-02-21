@@ -9,7 +9,7 @@ class LocData(typing.NamedTuple):
 
 
 class TalosPrincipleLocation(Location):
-    game: str = "The Talos Principle"
+    game: str = "The Talos Principle Reawakened"
 
 
 # Base location ID - must match client's BASE_LOCATION_ID (0x540000)
