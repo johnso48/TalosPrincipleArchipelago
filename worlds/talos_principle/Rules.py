@@ -138,7 +138,7 @@ def has_requirements(
     # ── Cumulative Golden cost (tools) ────────────────────────────────
     mt = ml = mz = ms = mj = mi = mo = 0
     if connector:   mt += 2; ml += 1
-    if hexahedron:  mt += 2; ml += 1
+    if hexahedron:  mt += 2; ml += 1; mz += 1
     if fans:        mt += 2; ml += 1; mz += 1; ms += 1
     if playback:    mt += 2; mj += 1; ms += 1; mz += 1
     if platform:    mt += 2; ml += 1; mz += 1; mi += 1; mo += 1
