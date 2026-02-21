@@ -34,8 +34,8 @@ class ReusableTetrominos(Toggle):
     When enabled, tetrominoes are returned to the player after being placed in
     a gate, tool panel, or tower door, making each piece reusable.
 
-    This dramatically reduces the number of tetrominoes required to reach any
-    goal (from 90 down to ~37).
+    This dramatically reduces the number of tetrominoes required to reach climb
+    the tower (from 90 down to ~37).
     """
     display_name = "Reusable Tetrominos"
     default = 0
