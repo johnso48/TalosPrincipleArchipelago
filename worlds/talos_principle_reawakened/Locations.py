@@ -120,7 +120,99 @@ MAIN_LOCATIONS: typing.Dict[str, LocData] = {
     "World C7 Red L":      LocData(BASE_ID + 89, REGION_WORLD_C),
 }
 
-# Location name → ID mapping
+# ── 24 optional Purple Sigil locations (enabled by randomise_purple_sigils) ─
+
+PURPLE_SIGIL_LOCATIONS: typing.Dict[str, LocData] = {
+    # World A  (internal IDs HL1-HL7)
+    "World A2 Purple Sigil":    LocData(BASE_ID + 90,  REGION_WORLD_A),   # HL1
+    "World A3 Purple Sigil 1":  LocData(BASE_ID + 91,  REGION_WORLD_A),   # HL2
+    "World A3 Purple Sigil 2":  LocData(BASE_ID + 92,  REGION_WORLD_A),   # HL3
+    "World A4 Purple Sigil":    LocData(BASE_ID + 93,  REGION_WORLD_A),   # HL4
+    "World A5 Purple Sigil":    LocData(BASE_ID + 94,  REGION_WORLD_A),   # HL5
+    "World A6 Purple Sigil":    LocData(BASE_ID + 95,  REGION_WORLD_A),   # HL6
+    "World A7 Purple Sigil":    LocData(BASE_ID + 96,  REGION_WORLD_A),   # HL7
+    # World B  (internal IDs HL8-HL17)
+    "World B1 Purple Sigil 1":  LocData(BASE_ID + 97,  REGION_WORLD_B),   # HL8
+    "World B1 Purple Sigil 2":  LocData(BASE_ID + 98,  REGION_WORLD_B),   # HL9
+    "World B2 Purple Sigil":    LocData(BASE_ID + 99,  REGION_WORLD_B),   # HL10
+    "World B3 Purple Sigil 1":  LocData(BASE_ID + 100, REGION_WORLD_B),   # HL11
+    "World B3 Purple Sigil 2":  LocData(BASE_ID + 101, REGION_WORLD_B),   # HL12
+    "World B4 Purple Sigil 1":  LocData(BASE_ID + 102, REGION_WORLD_B),   # HL13
+    "World B4 Purple Sigil 2":  LocData(BASE_ID + 103, REGION_WORLD_B),   # HL14
+    "World B5 Purple Sigil":    LocData(BASE_ID + 104, REGION_WORLD_B),   # HL15
+    "World B6 Purple Sigil":    LocData(BASE_ID + 105, REGION_WORLD_B),   # HL16
+    "World B7 Purple Sigil":    LocData(BASE_ID + 106, REGION_WORLD_B),   # HL17
+    # World C  (internal IDs HL18-HL24)
+    "World C1 Purple Sigil":    LocData(BASE_ID + 107, REGION_WORLD_C),   # HL18
+    "World C2 Purple Sigil":    LocData(BASE_ID + 108, REGION_WORLD_C),   # HL19
+    "World C3 Purple Sigil":    LocData(BASE_ID + 109, REGION_WORLD_C),   # HL20
+    "World C4 Purple Sigil":    LocData(BASE_ID + 110, REGION_WORLD_C),   # HL21
+    "World C5 Purple Sigil":    LocData(BASE_ID + 111, REGION_WORLD_C),   # HL22
+    "World C6 Purple Sigil":    LocData(BASE_ID + 112, REGION_WORLD_C),   # HL23
+    "World C7 Purple Sigil":    LocData(BASE_ID + 113, REGION_WORLD_C),   # HL24
+}
+
+# ── 30 optional Star locations (enabled by randomise_stars) ───────────────
+
+STAR_LOCATIONS: typing.Dict[str, LocData] = {
+    # World A1
+    "World A1 Star":            LocData(BASE_ID + 114, REGION_WORLD_A1),  # SL5
+    # World A
+    "World A2 Star":            LocData(BASE_ID + 115, REGION_WORLD_A),   # SL2
+    "World A3 Star 1":          LocData(BASE_ID + 116, REGION_WORLD_A),   # SZ3
+    "World A3 Star 2":          LocData(BASE_ID + 117, REGION_WORLD_A),   # SL1
+    "World A4 Star":            LocData(BASE_ID + 118, REGION_WORLD_A),   # SL4
+    "World A5 Star 1":          LocData(BASE_ID + 119, REGION_WORLD_A),   # SL7
+    "World A5 Star 2":          LocData(BASE_ID + 120, REGION_WORLD_A),   # SL6
+    "World A6 Star":            LocData(BASE_ID + 121, REGION_WORLD_A),   # SZ8
+    "World A7 Star":            LocData(BASE_ID + 122, REGION_WORLD_A),   # SL9
+    # World B
+    "World B1 Star":            LocData(BASE_ID + 123, REGION_WORLD_B),   # SL10
+    "World B2 Star":            LocData(BASE_ID + 124, REGION_WORLD_B),   # SL11
+    "World B3 Star":            LocData(BASE_ID + 125, REGION_WORLD_B),   # SL12
+    "World B4 Star 1":          LocData(BASE_ID + 126, REGION_WORLD_B),   # SL13
+    "World B4 Star 2":          LocData(BASE_ID + 127, REGION_WORLD_B),   # SZ24
+    "World B5 Star":            LocData(BASE_ID + 128, REGION_WORLD_B),   # SZ14
+    "World B7 Star 1":          LocData(BASE_ID + 129, REGION_WORLD_B),   # SZ15
+    "World B7 Star 2":          LocData(BASE_ID + 130, REGION_WORLD_B),   # SL16
+    # World C
+    "World C1 Star":            LocData(BASE_ID + 131, REGION_WORLD_C),   # SL17
+    "World C2 Star":            LocData(BASE_ID + 132, REGION_WORLD_C),   # SL18
+    "World C3 Star":            LocData(BASE_ID + 133, REGION_WORLD_C),   # SL19
+    "World C4 Star 1":          LocData(BASE_ID + 134, REGION_WORLD_C),   # SL20
+    "World C4 Star 2":          LocData(BASE_ID + 135, REGION_WORLD_C),   # SL21
+    "World C5 Star 1":          LocData(BASE_ID + 136, REGION_WORLD_C),   # SL22
+    "World C5 Star 2":          LocData(BASE_ID + 137, REGION_WORLD_C),   # SL23
+    "World C5 Star 3":          LocData(BASE_ID + 138, REGION_WORLD_C),   # SL27
+    "World C6 Star":            LocData(BASE_ID + 139, REGION_WORLD_C),   # SL29
+    "World C7 Star":            LocData(BASE_ID + 140, REGION_WORLD_C),   # SL30
+    # Special locations
+    "Messenger Island Star":    LocData(BASE_ID + 141, REGION_WORLD_C),   # SZ26
+    "Tower Star":               LocData(BASE_ID + 142, REGION_WORLD_C),   # SL25
+    "World Hub Star":           LocData(BASE_ID + 143, REGION_WORLD_C),   # SL28
+}
+
+# ── 9 optional Bonus Puzzle locations (enabled by randomise_bonus_puzzles) ──
+
+BONUS_PUZZLE_LOCATIONS: typing.Dict[str, LocData] = {
+    # World A Bonus Levels
+    "World A Bonus ES1":  LocData(BASE_ID + 144, REGION_WORLD_A),   # White S
+    "World A Bonus ES3":  LocData(BASE_ID + 145, REGION_WORLD_A),   # White S
+    "World A Bonus EL1":  LocData(BASE_ID + 146, REGION_WORLD_A),   # White L
+    # World B Bonus Levels
+    "World B Bonus ES2":  LocData(BASE_ID + 147, REGION_WORLD_B),   # White S
+    "World B Bonus EL2":  LocData(BASE_ID + 148, REGION_WORLD_B),   # White L
+    "World B Bonus EL3":  LocData(BASE_ID + 149, REGION_WORLD_B),   # White L
+    # World C Bonus Levels
+    "World C Bonus ES4":  LocData(BASE_ID + 150, REGION_WORLD_C),   # White S
+    "World C Bonus EL4":  LocData(BASE_ID + 151, REGION_WORLD_C),   # White L
+    "World C Bonus EO1":  LocData(BASE_ID + 152, REGION_WORLD_C),   # White O
+}
+
+# Location name → ID mapping (includes all possible locations)
 location_name_to_id: typing.Dict[str, int] = {
-    name: data.id for name, data in MAIN_LOCATIONS.items()
+    **{name: data.id for name, data in MAIN_LOCATIONS.items()},
+    **{name: data.id for name, data in PURPLE_SIGIL_LOCATIONS.items()},
+    **{name: data.id for name, data in STAR_LOCATIONS.items()},
+    **{name: data.id for name, data in BONUS_PUZZLE_LOCATIONS.items()},
 }

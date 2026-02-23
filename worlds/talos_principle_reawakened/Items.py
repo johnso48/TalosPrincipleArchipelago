@@ -16,7 +16,7 @@ class TalosPrincipleItem(Item):
 BASE_ID = 0x540000  # 5505024
 
 # Tetromino definitions: {name: count}
-# 21 unique color+shape combinations, 90 total pieces
+# 19 unique color+shape combinations, 90 total pieces
 TETROMINO_COUNTS = {
     # Green pieces (18 total)
     "Green J": 5,
@@ -84,9 +84,45 @@ for i, tetromino in enumerate(TETROMINOES):
         ItemClassification.progression,
     )
 
-# Filler item (used when starting tetrominoes are pre-collected)
-FILLER_OFFSET = len(TETROMINOES)
-item_table["Nothing"] = ItemData(BASE_ID + FILLER_OFFSET, ItemClassification.filler)
+# Purple Sigil item (optional, controlled by randomise_purple_sigils)
+PURPLE_SIGIL_COUNT = 24
+PURPLE_SIGIL_OFFSET = len(TETROMINOES)
+item_table["Purple Sigil"] = ItemData(
+    BASE_ID + PURPLE_SIGIL_OFFSET,
+    ItemClassification.filler, # becomes progression when randomise_stars is enabled
+)
+
+# Star item (optional, controlled by randomise_stars)
+STAR_OFFSET = PURPLE_SIGIL_OFFSET + 1
+item_table["Star"] = ItemData(
+    BASE_ID + STAR_OFFSET,
+    ItemClassification.useful,
+)
+
+# White tetromino items (optional, controlled by randomise_bonus_puzzles)
+WHITE_TETROMINO_COUNTS = {
+    "White S": 4,
+    "White L": 4,
+    "White O": 1,
+}
+BONUS_PUZZLE_COUNT = sum(WHITE_TETROMINO_COUNTS.values())  # 9
+WHITE_OFFSET = STAR_OFFSET + 1
+for i, (name, count) in enumerate(WHITE_TETROMINO_COUNTS.items()):
+    item_table[name] = ItemData(
+        BASE_ID + WHITE_OFFSET + i,
+        ItemClassification.useful,
+    )
+
+# Filler items (randomly selected when padding is needed)
+FILLER_ITEMS = [
+    "Segmentation Fault",
+    "Temporary Self-Awareness",
+    "Elohim's Disapproval",
+    "Divine Pat on the Head",
+]
+FILLER_OFFSET = WHITE_OFFSET + len(WHITE_TETROMINO_COUNTS)
+for i, name in enumerate(FILLER_ITEMS):
+    item_table[name] = ItemData(BASE_ID + FILLER_OFFSET + i, ItemClassification.filler)
 
 
 # ── Item groups for hinting ────────────────────────────────────────────────
@@ -96,4 +132,7 @@ item_groups = {
     "Green Tetrominoes": {t for t in TETROMINOES if "Green" in t},
     "Golden Tetrominoes": {t for t in TETROMINOES if "Golden" in t},
     "Red Tetrominoes": {t for t in TETROMINOES if "Red" in t},
+    "White Tetrominoes": set(WHITE_TETROMINO_COUNTS.keys()),
+    "Purple Sigils": {"Purple Sigil"},
+    "Stars": {"Star"},
 }

@@ -41,8 +41,35 @@ class ReusableTetrominos(Toggle):
     default = 0
 
 
+class RandomisePurpleSigils(Toggle):
+    """
+    When enabled, the 24 Purple Sigils hidden throughout the worlds are randomised
+    """
+    display_name = "Randomise Purple Sigils"
+    default = 0
+
+
+class RandomiseStars(Toggle):
+    """
+    When enabled, the 30 Stars hidden throughout the worlds are randomised.
+    """
+    display_name = "Randomise Stars"
+    default = 0
+
+
+class RandomiseBonusPuzzles(Toggle):
+    """
+    When enabled, the 9 Bonus White Tetrominos are randomised.
+    """
+    display_name = "Randomise Bonus Puzzles"
+    default = 0
+
+
 @dataclass
 class TalosPrincipleOptions(PerGameCommonOptions):
     goal_requirement: GoalRequirement
     starting_tetromino_count: StartingTetrominoCount
     reusable_tetrominos: ReusableTetrominos
+    randomise_purple_sigils: RandomisePurpleSigils
+    randomise_stars: RandomiseStars
+    randomise_bonus_puzzles: RandomiseBonusPuzzles

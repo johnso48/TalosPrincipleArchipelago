@@ -192,6 +192,53 @@ def has_requirements(
 
 
 # ═══════════════════════════════════════════════════════════════════════════
+#  Tower floor access – red-piece check for individual floors
+# ═══════════════════════════════════════════════════════════════════════════
+
+# Per-floor red tetromino costs (1-indexed via list access)
+_TOWER_FLOOR_COSTS = [
+    {"z": 2, "l": 2},                                          # Floor 1
+    {"o": 1, "t": 4, "l": 4},                                  # Floor 2
+    {"i": 4, "j": 2, "l": 2, "z": 1, "s": 1},                 # Floor 3
+    {"o": 2, "t": 4, "j": 1, "l": 1, "s": 2, "z": 2},         # Floor 4
+    {"i": 2, "o": 4, "t": 4, "j": 1, "l": 1, "z": 1, "s": 1}, # Floor 5
+]
+
+
+def can_open_tower_floor(
+    state: CollectionState, player: int, floor: int, reusable: bool = False,
+) -> bool:
+    """Check that the player has enough red pieces to open tower doors
+    through the given *floor* (1-indexed, so ``floor=1`` checks Floor 1 only,
+    ``floor=5`` checks all five floors)."""
+    costs = _TOWER_FLOOR_COSTS[:floor]
+    if reusable:
+        rt = max(c.get("t", 0) for c in costs)
+        rl = max(c.get("l", 0) for c in costs)
+        rz = max(c.get("z", 0) for c in costs)
+        ri = max(c.get("i", 0) for c in costs)
+        rj = max(c.get("j", 0) for c in costs)
+        ro = max(c.get("o", 0) for c in costs)
+        rs = max(c.get("s", 0) for c in costs)
+    else:
+        rt = rl = rz = ri = rj = ro = rs = 0
+        for c in costs:
+            rt += c.get("t", 0); rl += c.get("l", 0)
+            rz += c.get("z", 0); ri += c.get("i", 0)
+            rj += c.get("j", 0); ro += c.get("o", 0)
+            rs += c.get("s", 0)
+    return (
+        _count(state, player, RED_T) >= rt and
+        _count(state, player, RED_L) >= rl and
+        _count(state, player, RED_Z) >= rz and
+        _count(state, player, RED_I) >= ri and
+        _count(state, player, RED_J) >= rj and
+        _count(state, player, RED_O) >= ro and
+        _count(state, player, RED_S) >= rs
+    )
+
+
+# ═══════════════════════════════════════════════════════════════════════════
 #  Ascension (Tower) – cumulative red-piece check
 # ═══════════════════════════════════════════════════════════════════════════
 
@@ -532,3 +579,233 @@ def set_location_rules(world) -> None:
     set_rule(loc("World C7 Red L"),
              lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
                                             hexahedron=True, connector=True, fans=True))
+
+    # ── Purple Sigils (only present when randomise_purple_sigils is on) ──
+    if bool(world.options.randomise_purple_sigils.value):
+        # World A sigils
+        set_rule(loc("World A4 Purple Sigil"),
+                 lambda state: has_requirements(state, player, reusable=reusable, in_region="a",
+                                                connector=True))
+        set_rule(loc("World A5 Purple Sigil"),
+                 lambda state: has_requirements(state, player, reusable=reusable, in_region="a",
+                                                hexahedron=True))
+        set_rule(loc("World A6 Purple Sigil"),
+                 lambda state: has_requirements(state, player, reusable=reusable, in_region="a",
+                                                connector=True))
+        set_rule(loc("World A7 Purple Sigil"),
+                 lambda state: has_requirements(state, player, reusable=reusable, in_region="a",
+                                                connector=True))
+        # World B sigils
+        set_rule(loc("World B1 Purple Sigil 2"),
+                 lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
+                                                hexahedron=True))
+        set_rule(loc("World B2 Purple Sigil"),
+                 lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
+                                                connector=True))
+        set_rule(loc("World B3 Purple Sigil 2"),
+                 lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
+                                                hexahedron=True, fans=True))
+        set_rule(loc("World B4 Purple Sigil 1"),
+                 lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
+                                                playback=True))
+        set_rule(loc("World B4 Purple Sigil 2"),
+                 lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
+                                                connector=True))
+        set_rule(loc("World B5 Purple Sigil"),
+                 lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
+                                                connector=True, hexahedron=True,
+                                                fans=True))
+        set_rule(loc("World B7 Purple Sigil"),
+                 lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
+                                                hexahedron=True))
+
+    # ── Stars (only present when randomise_stars is on) ───────────────
+    if bool(world.options.randomise_stars.value):
+        # World Stars (A1 Star, A2 Star, A3 Stars need no tools beyond region)
+        set_rule(loc("World A4 Star"),
+                 lambda state: has_requirements(state, player, reusable=reusable, in_region="a",
+                                                connector=True))
+        set_rule(loc("World A5 Star 1"),
+                 lambda state: has_requirements(state, player, reusable=reusable, in_region="a",
+                                                connector=True))
+        set_rule(loc("World A5 Star 2"),
+                 lambda state: has_requirements(state, player, reusable=reusable, in_region="a",
+                                                hexahedron=True))
+        set_rule(loc("World A6 Star"),
+                 lambda state: has_requirements(state, player, reusable=reusable, in_region="a",
+                                                hexahedron=True))
+        set_rule(loc("World A7 Star"),
+                 lambda state: has_requirements(state, player, reusable=reusable, in_region="a",
+                                                connector=True))
+        # World B stars
+        set_rule(loc("World B1 Star"),
+                 lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
+                                                connector=True))
+        set_rule(loc("World B2 Star"),
+                 lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
+                                                connector=True, hexahedron=True))
+        set_rule(loc("World B3 Star"),
+                 lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
+                                                connector=True, hexahedron=True,
+                                                fans=True))
+        set_rule(loc("World B4 Star 1"),
+                 lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
+                                                connector=True, hexahedron=True))
+        set_rule(loc("World B4 Star 2"),
+                 lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
+                                                connector=True, hexahedron=True,
+                                                fans=True))
+        set_rule(loc("World B5 Star"),
+                 lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
+                                                connector=True, hexahedron=True,
+                                                fans=True))
+        set_rule(loc("World B7 Star 1"),
+                 lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
+                                                hexahedron=True, fans=True))
+        set_rule(loc("World B7 Star 2"),
+                 lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
+                                                connector=True, hexahedron=True,
+                                                fans=True))
+        # World C stars
+        set_rule(loc("World C1 Star"),
+                 lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
+                                                connector=True))
+        set_rule(loc("World C2 Star"),
+                 lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
+                                                hexahedron=True, playback=True,
+                                                platform=True))
+        set_rule(loc("World C3 Star"),
+                 lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
+                                                connector=True, hexahedron=True,
+                                                fans=True))
+        set_rule(loc("World C4 Star 1"),
+                 lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
+                                                connector=True, hexahedron=True,
+                                                playback=True, platform=True))
+        set_rule(loc("World C4 Star 2"),
+                 lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
+                                                connector=True, hexahedron=True,
+                                                fans=True))
+        set_rule(loc("World C5 Star 1"),
+                 lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
+                                                connector=True, hexahedron=True,
+                                                fans=True, playback=True))
+        set_rule(loc("World C5 Star 2"),
+                 lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
+                                                connector=True, hexahedron=True,
+                                                fans=True, playback=True))
+        set_rule(loc("World C5 Star 3"),
+                 lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
+                                                connector=True, hexahedron=True))
+        set_rule(loc("World C6 Star"),
+                 lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
+                                                connector=True, playback=True))
+        set_rule(loc("World C7 Star"),
+                 lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
+                                                connector=True, hexahedron=True,
+                                                fans=True))
+        # Messenger Island – requires 24 Purple Sigils (only when both options on)
+        if bool(world.options.randomise_purple_sigils.value):
+            set_rule(loc("Messenger Island Star"),
+                     lambda state: (
+                         has_requirements(state, player, reusable=reusable, in_region="c") and
+                         state.count("Purple Sigil", player) >= 24
+                     ))
+        else:
+            set_rule(loc("Messenger Island Star"),
+                     lambda state: has_requirements(state, player, reusable=reusable, in_region="c", 
+                       connector=True, hexahedron=True, 
+                       fans=True, playback=True)) 
+        # Tower Star – all tools + all 5 tower floors
+        set_rule(loc("Tower Star"),
+                 lambda state: can_ascend(state, player, reusable=reusable))
+        # World Hub Star – C gate + connector + tower floor 1
+        set_rule(loc("World Hub Star"),
+                 lambda state: (
+                     has_requirements(state, player, reusable=reusable, in_region="c",
+                                      connector=True) and
+                     can_open_tower_floor(state, player, 1, reusable=reusable)
+                 ))
+
+    # ── Bonus Puzzles (only present when randomise_bonus_puzzles is on) ───
+    if bool(world.options.randomise_bonus_puzzles.value):
+        randomise_stars = bool(world.options.randomise_stars.value)
+
+        def _bonus_prereq(state) -> bool:
+            """Bonus puzzles require either 30 Stars (if randomised) or
+            access to all worlds + all tools (if stars are not randomised)."""
+            if randomise_stars:
+                return state.count("Star", player) >= 30
+            return has_requirements(
+                state, player, reusable=reusable, in_region="c",
+                connector=True, hexahedron=True,
+                fans=True, playback=True, platform=True,
+            )
+
+        # World A Bonus Levels – require World A access + bonus prereq
+        # ES1 – no extra tools
+        set_rule(loc("World A Bonus ES1"),
+                 lambda state: (
+                     has_requirements(state, player, reusable=reusable, in_region="a") and
+                     _bonus_prereq(state)
+                 ))
+        # ES3 – Fans
+        set_rule(loc("World A Bonus ES3"),
+                 lambda state: (
+                     has_requirements(state, player, reusable=reusable, in_region="a",
+                                      fans=True) and
+                     _bonus_prereq(state)
+                 ))
+        # EL1 – no extra tools
+        set_rule(loc("World A Bonus EL1"),
+                 lambda state: (
+                     has_requirements(state, player, reusable=reusable, in_region="a") and
+                     _bonus_prereq(state)
+                 ))
+
+        # World B Bonus Levels – require World B access + bonus prereq
+        # ES2 – Connector
+        set_rule(loc("World B Bonus ES2"),
+                 lambda state: (
+                     has_requirements(state, player, reusable=reusable, in_region="b",
+                                      connector=True) and
+                     _bonus_prereq(state)
+                 ))
+        # EL2 – Connector
+        set_rule(loc("World B Bonus EL2"),
+                 lambda state: (
+                     has_requirements(state, player, reusable=reusable, in_region="b",
+                                      connector=True) and
+                     _bonus_prereq(state)
+                 ))
+        # EL3 – Connector + Playback
+        set_rule(loc("World B Bonus EL3"),
+                 lambda state: (
+                     has_requirements(state, player, reusable=reusable, in_region="b",
+                                      connector=True, playback=True) and
+                     _bonus_prereq(state)
+                 ))
+
+        # World C Bonus Levels – require World C access + bonus prereq
+        # ES4 – Hexahedron + Connector
+        set_rule(loc("World C Bonus ES4"),
+                 lambda state: (
+                     has_requirements(state, player, reusable=reusable, in_region="c",
+                                      hexahedron=True, connector=True) and
+                     _bonus_prereq(state)
+                 ))
+        # EL4 – Connector + Hexahedron + Playback + Platform
+        set_rule(loc("World C Bonus EL4"),
+                 lambda state: (
+                     has_requirements(state, player, reusable=reusable, in_region="c",
+                                      connector=True, hexahedron=True,
+                                      playback=True, platform=True) and
+                     _bonus_prereq(state)
+                 ))
+        # EO1 – Hexahedron + Connector
+        set_rule(loc("World C Bonus EO1"),
+                 lambda state: (
+                     has_requirements(state, player, reusable=reusable, in_region="c",
+                                      hexahedron=True, connector=True) and
+                     _bonus_prereq(state)
+                 ))

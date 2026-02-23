@@ -3,13 +3,25 @@ from typing import Dict, List
 from BaseClasses import Entrance, Item, ItemClassification, Region, Tutorial
 from worlds.AutoWorld import WebWorld, World
 
-from .Items import TETROMINO_COUNTS, TalosPrincipleItem, item_groups, item_table
+from .Items import (
+    BONUS_PUZZLE_COUNT,
+    FILLER_ITEMS,
+    PURPLE_SIGIL_COUNT,
+    TETROMINO_COUNTS,
+    WHITE_TETROMINO_COUNTS,
+    TalosPrincipleItem,
+    item_groups,
+    item_table,
+)
 from .Locations import (
+    BONUS_PUZZLE_LOCATIONS,
     MAIN_LOCATIONS,
+    PURPLE_SIGIL_LOCATIONS,
     REGION_WORLD_A,
     REGION_WORLD_A1,
     REGION_WORLD_B,
     REGION_WORLD_C,
+    STAR_LOCATIONS,
     TalosPrincipleLocation,
 )
 from .Options import TalosPrincipleOptions
@@ -49,7 +61,12 @@ class TalosPrincipleWorld(World):
     web = TalosPrincipleWeb()
 
     item_name_to_id = {name: data.code for name, data in item_table.items()}
-    location_name_to_id = {name: data.id for name, data in MAIN_LOCATIONS.items()}
+    location_name_to_id = {
+        **{name: data.id for name, data in MAIN_LOCATIONS.items()},
+        **{name: data.id for name, data in PURPLE_SIGIL_LOCATIONS.items()},
+        **{name: data.id for name, data in STAR_LOCATIONS.items()},
+        **{name: data.id for name, data in BONUS_PUZZLE_LOCATIONS.items()},
+    }
     item_name_groups = item_groups
 
     required_client_version = (0, 5, 0)
@@ -92,6 +109,30 @@ class TalosPrincipleWorld(World):
                 TalosPrincipleLocation(self.player, loc_name, loc_data.id, region)
             )
 
+        # Optionally add Purple Sigil locations
+        if self.options.randomise_purple_sigils:
+            for loc_name, loc_data in PURPLE_SIGIL_LOCATIONS.items():
+                region = region_map[loc_data.region]
+                region.locations.append(
+                    TalosPrincipleLocation(self.player, loc_name, loc_data.id, region)
+                )
+
+        # Optionally add Star locations
+        if self.options.randomise_stars:
+            for loc_name, loc_data in STAR_LOCATIONS.items():
+                region = region_map[loc_data.region]
+                region.locations.append(
+                    TalosPrincipleLocation(self.player, loc_name, loc_data.id, region)
+                )
+
+        # Optionally add Bonus Puzzle locations
+        if self.options.randomise_bonus_puzzles:
+            for loc_name, loc_data in BONUS_PUZZLE_LOCATIONS.items():
+                region = region_map[loc_data.region]
+                region.locations.append(
+                    TalosPrincipleLocation(self.player, loc_name, loc_data.id, region)
+                )
+
         # Entrances
         menu.exits.append(Entrance(self.player, "Menu -> World A1", menu))
         world_a1.exits.append(Entrance(self.player, "World A1 -> World A", world_a1))
@@ -109,6 +150,26 @@ class TalosPrincipleWorld(World):
         """Fill the item pool with tetrominoes (and filler if needed)."""
         for tetromino in self.tetromino_pool:
             self.multiworld.itempool.append(self.create_item(tetromino))
+
+        # Add Purple Sigil items when the option is enabled
+        if self.options.randomise_purple_sigils:
+            for _ in range(PURPLE_SIGIL_COUNT):
+                self.multiworld.itempool.append(self.create_item("Purple Sigil"))
+
+        # Add Star items when the option is enabled
+        if self.options.randomise_stars:
+            star_count = len(STAR_LOCATIONS)
+            # Messenger Island excluded when purple sigils are not randomised
+            if not self.options.randomise_purple_sigils:
+                star_count -= 1
+            for _ in range(star_count):
+                self.multiworld.itempool.append(self.create_item("Star"))
+
+        # Add White tetromino items when bonus puzzles are enabled
+        if self.options.randomise_bonus_puzzles:
+            for name, count in WHITE_TETROMINO_COUNTS.items():
+                for _ in range(count):
+                    self.multiworld.itempool.append(self.create_item(name))
 
         # Pad with filler if precollected items left gaps
         total_locations = sum(
@@ -130,13 +191,26 @@ class TalosPrincipleWorld(World):
 
     def create_item(self, name: str) -> Item:
         data = item_table[name]
-        return TalosPrincipleItem(name, data.classification, data.code, self.player)
+        classification = data.classification
+        # Purple Sigils: progression when stars are randomised (gates Messenger Island star behind 24 Purple Sigils),
+        if name == "Purple Sigil" and self.options.randomise_purple_sigils:
+            classification = ItemClassification.progression
+        # Stars become progression when bonus puzzles are randomised
+        # (bonus locations require 30 Stars to access)
+        if (name == "Star"
+                and self.options.randomise_stars
+                and self.options.randomise_bonus_puzzles):
+            classification = ItemClassification.progression
+        return TalosPrincipleItem(name, classification, data.code, self.player)
 
     def fill_slot_data(self) -> Dict[str, any]:
         return {
             "goal_requirement": self.options.goal_requirement.value,
             "reusable_tetrominos": self.options.reusable_tetrominos.value,
+            "randomise_purple_sigils": self.options.randomise_purple_sigils.value,
+            "randomise_stars": self.options.randomise_stars.value,
+            "randomise_bonus_puzzles": self.options.randomise_bonus_puzzles.value,
         }
 
     def get_filler_item_name(self) -> str:
-        return "Nothing"
+        return self.random.choice(FILLER_ITEMS)
