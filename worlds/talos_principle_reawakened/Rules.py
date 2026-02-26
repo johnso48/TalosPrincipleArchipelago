@@ -643,7 +643,7 @@ def set_location_rules(world) -> None:
                                                 connector=True))
         set_rule(loc("World B2 Star"),
                  lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
-                                                connector=True, hexahedron=True))
+                                                connector=True, hexahedron=True, fans=True))
         set_rule(loc("World B3 Star"),
                  lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
                                                 connector=True, hexahedron=True,
