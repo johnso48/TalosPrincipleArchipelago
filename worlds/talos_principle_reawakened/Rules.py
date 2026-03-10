@@ -320,17 +320,9 @@ def set_rules(world) -> None:
     multiworld.get_entrance("World A -> World C", player).access_rule = \
         lambda state: has_requirements(state, player, reusable=reusable, in_region="c")
 
-    if goal == 1:  # Ascension
-        multiworld.completion_condition[player] = \
-            lambda state: can_ascend(state, player, reusable=reusable)
-    else:  # Transcendence – reach World C + all tetrominoes
-        total_tetrominoes = sum(TETROMINO_COUNTS.values())
-        multiworld.completion_condition[player] = \
-            lambda state: (
-                has_requirements(state, player, reusable=reusable, in_region="c") and
-                sum(_count(state, player, [name] * count)
-                    for name, count in TETROMINO_COUNTS.items()) >= total_tetrominoes
-            )
+    
+    multiworld.completion_condition[player] = \
+        lambda state: can_ascend(state, player, reusable=reusable)
 
 
 def set_location_rules(world) -> None:
