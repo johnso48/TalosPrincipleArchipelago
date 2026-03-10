@@ -157,15 +157,28 @@ def has_requirements(
             connector = True
             hexahedron = True
         if fans or playback:
+            connector = True
+            hexahedron = True
             fans = True
             playback = True
+        if platform:
+            connector = True
+            hexahedron = True
+            fans = True
+            playback = True
+            platform = True
 
         # Cumulative Green cost (gates)
         gj = gz = gi = gl = gt = 0
         if need_a1:  gj += 2; gz += 1                       # A1 Gate
-        if need_a:   gj += 1; gi += 1; gl += 1; gz += 1     # A Gate
+        if need_a:   
+            gj += 1; gi += 1; gl += 1; gz += 1     # A Gate
+            connector = True; hexahedron = True
         if need_b:   gt += 2; gz += 1; gi += 1; gl += 1     # B Gate
-        if need_c:   gt += 2; gj += 2; gl += 1; gz += 1     # C Gate
+        if need_c:   
+            gt += 2; gj += 2; gl += 1; gz += 1     # C Gate
+            connector = True; hexahedron = True
+            fans = True; playback = True
 
         # Cumulative Golden cost (tools)
         mt = ml = mz = ms = mj = mi = mo = 0

@@ -205,7 +205,6 @@ class TalosPrincipleWorld(World):
 
     def fill_slot_data(self) -> Dict[str, any]:
         return {
-            "goal_requirement": self.options.goal_requirement.value,
             "reusable_tetrominos": self.options.reusable_tetrominos.value,
             "randomise_purple_sigils": self.options.randomise_purple_sigils.value,
             "randomise_stars": self.options.randomise_stars.value,
