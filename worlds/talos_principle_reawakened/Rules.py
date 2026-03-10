@@ -320,9 +320,6 @@ def set_rules(world) -> None:
     multiworld.get_entrance("World A -> World C", player).access_rule = \
         lambda state: has_requirements(state, player, reusable=reusable, in_region="c")
 
-    # ── Victory condition ─────────────────────────────────────────────
-    goal = world.options.goal_requirement.value
-
     if goal == 1:  # Ascension
         multiworld.completion_condition[player] = \
             lambda state: can_ascend(state, player, reusable=reusable)
