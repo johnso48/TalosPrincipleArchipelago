@@ -46,6 +46,9 @@ class RandomiseStars(Toggle):
 class RandomiseBonusPuzzles(Toggle):
     """
     When enabled, the 9 Bonus White Tetrominos are randomised.
+
+    If stars are also randomised, logic will require all 30 stars to be collected before 
+    the bonus puzzles can be completed due to the potential of unlocking them in any order
     """
     display_name = "Randomise Bonus Puzzles"
     default = 0
