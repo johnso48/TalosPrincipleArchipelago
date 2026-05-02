@@ -54,6 +54,28 @@ class RandomiseBonusPuzzles(Toggle):
     default = 0
 
 
+class ShuffleMechanics(Toggle):
+    """
+    When enabled, Golden tetrominoes are removed from the item pool and the
+    five mechanic tools (Connector, Hexahedron, Fans, Playback, Platform)
+    are shuffled into the item pool.
+    """
+    display_name = "Shuffle Mechanics"
+    default = 0
+
+
+class ShuffleWorldGates(Toggle):
+    """
+    When enabled, Green tetrominoes are removed from the item pool and the
+    four world gates (World A1 Gate, World A Gate, World B Gate, World C
+    Gate) are shuffled into the item pool.
+
+    When received, the tetrominos required to open the gate will be granted to the player
+    """
+    display_name = "Shuffle Messenger Gates"
+    default = 0
+
+
 @dataclass
 class TalosPrincipleOptions(PerGameCommonOptions):
     starting_tetromino_count: StartingTetrominoCount
@@ -61,3 +83,5 @@ class TalosPrincipleOptions(PerGameCommonOptions):
     randomise_purple_sigils: RandomisePurpleSigils
     randomise_stars: RandomiseStars
     randomise_bonus_puzzles: RandomiseBonusPuzzles
+    shuffle_mechanics: ShuffleMechanics
+    shuffle_world_gates: ShuffleWorldGates

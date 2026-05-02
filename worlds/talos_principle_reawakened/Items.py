@@ -124,6 +124,28 @@ FILLER_OFFSET = WHITE_OFFSET + len(WHITE_TETROMINO_COUNTS)
 for i, name in enumerate(FILLER_ITEMS):
     item_table[name] = ItemData(BASE_ID + FILLER_OFFSET + i, ItemClassification.filler)
 
+# Tool items (optional, controlled by shuffle_mechanics)
+# When shuffle_mechanics is enabled, these replace Golden tetrominoes
+# and become the progression gating for puzzle locations.
+TOOL_ITEMS = ["Connector", "Hexahedron", "Fans", "Playback", "Platform"]
+TOOL_OFFSET = FILLER_OFFSET + len(FILLER_ITEMS)
+for i, name in enumerate(TOOL_ITEMS):
+    item_table[name] = ItemData(
+        BASE_ID + TOOL_OFFSET + i,
+        ItemClassification.progression,
+    )
+
+# Gate items (optional, controlled by shuffle_world_gates)
+# When shuffle_world_gates is enabled, these replace Green tetrominoes
+# and become the progression gating for world entrances.
+GATE_ITEMS = ["World A1 Gate", "World A Gate", "World B Gate", "World C Gate"]
+GATE_OFFSET = TOOL_OFFSET + len(TOOL_ITEMS)
+for i, name in enumerate(GATE_ITEMS):
+    item_table[name] = ItemData(
+        BASE_ID + GATE_OFFSET + i,
+        ItemClassification.progression,
+    )
+
 
 # ── Item groups for hinting ────────────────────────────────────────────────
 
@@ -135,4 +157,6 @@ item_groups = {
     "White Tetrominoes": set(WHITE_TETROMINO_COUNTS.keys()),
     "Purple Sigils": {"Purple Sigil"},
     "Stars": {"Star"},
+    "Tools": set(TOOL_ITEMS),
+    "Gates": set(GATE_ITEMS),
 }

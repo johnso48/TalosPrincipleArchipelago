@@ -6,8 +6,10 @@ from worlds.AutoWorld import WebWorld, World
 from .Items import (
     BONUS_PUZZLE_COUNT,
     FILLER_ITEMS,
+    GATE_ITEMS,
     PURPLE_SIGIL_COUNT,
     TETROMINO_COUNTS,
+    TOOL_ITEMS,
     WHITE_TETROMINO_COUNTS,
     TalosPrincipleItem,
     item_groups,
@@ -73,9 +75,20 @@ class TalosPrincipleWorld(World):
 
     def generate_early(self) -> None:
         """Pre-collect starting tetrominoes if the option is set."""
-        # Build full pool of 89 tetromino instances
+        shuffle_mechanics = bool(self.options.shuffle_mechanics.value)
+        shuffle_gates = bool(self.options.shuffle_world_gates.value)
+
+        # Build full pool of tetromino instances.
+        # When shuffle_mechanics is on, Golden tetrominoes are removed
+        # (tools are shuffled items instead of golden-tetromino purchases).
+        # When shuffle_world_gates is on, Green tetrominoes are removed
+        # (gates are shuffled items instead of green-tetromino costs).
         self.tetromino_pool: List[str] = []
         for name, count in TETROMINO_COUNTS.items():
+            if shuffle_gates and "Green" in name:
+                continue
+            if shuffle_mechanics and "Golden" in name:
+                continue
             self.tetromino_pool.extend([name] * count)
 
         starting_count = self.options.starting_tetromino_count.value
@@ -151,6 +164,16 @@ class TalosPrincipleWorld(World):
         for tetromino in self.tetromino_pool:
             self.multiworld.itempool.append(self.create_item(tetromino))
 
+        # Add the 5 tool items when shuffle_mechanics is enabled
+        if self.options.shuffle_mechanics:
+            for tool_name in TOOL_ITEMS:
+                self.multiworld.itempool.append(self.create_item(tool_name))
+
+        # Add the 4 gate items when shuffle_world_gates is enabled
+        if self.options.shuffle_world_gates:
+            for gate_name in GATE_ITEMS:
+                self.multiworld.itempool.append(self.create_item(gate_name))
+
         # Add Purple Sigil items when the option is enabled
         if self.options.randomise_purple_sigils:
             for _ in range(PURPLE_SIGIL_COUNT):
@@ -209,6 +232,8 @@ class TalosPrincipleWorld(World):
             "randomise_purple_sigils": self.options.randomise_purple_sigils.value,
             "randomise_stars": self.options.randomise_stars.value,
             "randomise_bonus_puzzles": self.options.randomise_bonus_puzzles.value,
+            "shuffle_mechanics": self.options.shuffle_mechanics.value,
+            "shuffle_world_gates": self.options.shuffle_world_gates.value,
         }
 
     def get_filler_item_name(self) -> str:

@@ -68,6 +68,8 @@ def has_requirements(
     state: CollectionState,
     player: int,
     reusable: bool = False,
+    shuffle_mechanics: bool = False,
+    shuffle_gates: bool = False,
     in_region: str | None = None,
     a1_gate: bool = False,
     connector: bool = False,
@@ -90,6 +92,12 @@ def has_requirements(
     Each tool flag adds that tool's golden cost **and** ensures its gate
     prerequisite is also open.
 
+    When ``shuffle_mechanics`` is True the golden-tetromino cost for tools
+    is replaced by shuffled tool items (``state.has("Connector", …)`` etc.).
+
+    When ``shuffle_gates`` is True the green-tetromino cost for gates is
+    replaced by shuffled gate items (``state.has("World A1 Gate", …)`` etc.).
+
     When ``reusable`` is False (default / single-use mode) costs are
     **summed** across every gate and tool on the path.  **Tool pairing**
     is also applied: Connector & Hexahedron share a golden pool, as do
@@ -100,21 +108,79 @@ def has_requirements(
     needed because the player can re-use pieces for each tool separately.
     """
 
+    # ── Shuffle-mechanics mode: tools are items ───────────────────────
+    if shuffle_mechanics:
+        ok = True
+        if connector:  ok = ok and state.has("Connector", player)
+        if hexahedron: ok = ok and state.has("Hexahedron", player)
+        if fans:       ok = ok and state.has("Fans", player)
+        if playback:   ok = ok and state.has("Playback", player)
+        if platform:   ok = ok and state.has("Platform", player)
+        if not ok:
+            return False
+
     # ── Which gates must be open? ─────────────────────────────────────
     need_a1 = a1_gate or in_region in ("a", "b", "c")
     need_a  = in_region in ("b", "c")
     need_b  = in_region in ("b", "c")  # reaching World C passes through the B gate
     need_c  = in_region == "c"
 
-    # Tool gate prerequisites
-    if connector or hexahedron:
-        need_a1 = True
-    if fans or playback:
-        need_a1 = True; need_a = True; need_b = True
-    if platform:
-        need_a1 = True; need_a = True; need_c = True
+    # Tool gate prerequisites (only when gates are NOT shuffled items —
+    # when gates are shuffled the entrance rules handle gate access)
+    if not shuffle_gates:
+        if connector or hexahedron:
+            need_a1 = True
+        if fans or playback:
+            need_a1 = True; need_a = True; need_b = True
+        if platform:
+            need_a1 = True; need_a = True; need_c = True
 
-    if reusable:
+    # ── Shuffle-gates mode: gate access via items ─────────────────────
+    if shuffle_gates:
+        ok = True
+        if need_a1: ok = ok and state.has("World A1 Gate", player)
+        if need_a:  ok = ok and state.has("World A Gate", player)
+        if need_b:  ok = ok and state.has("World B Gate", player)
+        if need_c:  ok = ok and state.has("World C Gate", player)
+        if not ok:
+            return False
+        # Green costs are zero when gates are shuffled
+        gj = gz = gi = gl = gt = 0
+        # Golden costs handled below (may still need them if mechanics aren't shuffled)
+        if shuffle_mechanics:
+            mt = ml = mz = ms = mj = mi = mo = 0
+        elif reusable:
+            # Golden: no pair-budgeting — max per piece across requested tools.
+            tool_costs: list[dict] = []
+            if connector:  tool_costs.append({"t": 2, "l": 1})
+            if hexahedron: tool_costs.append({"t": 2, "l": 1, "z": 1})
+            if fans:       tool_costs.append({"t": 2, "l": 1, "z": 1, "s": 1})
+            if playback:   tool_costs.append({"t": 2, "j": 1, "s": 1, "z": 1})
+            if platform:   tool_costs.append({"t": 2, "l": 1, "z": 1, "i": 1, "o": 1})
+            mt = max((c.get("t", 0) for c in tool_costs), default=0)
+            ml = max((c.get("l", 0) for c in tool_costs), default=0)
+            mz = max((c.get("z", 0) for c in tool_costs), default=0)
+            ms = max((c.get("s", 0) for c in tool_costs), default=0)
+            mj = max((c.get("j", 0) for c in tool_costs), default=0)
+            mi = max((c.get("i", 0) for c in tool_costs), default=0)
+            mo = max((c.get("o", 0) for c in tool_costs), default=0)
+        else:
+            # Single-use tool pairing
+            if connector or hexahedron:
+                connector = True; hexahedron = True
+            if fans or playback:
+                connector = True; hexahedron = True
+                fans = True; playback = True
+            if platform:
+                connector = True; hexahedron = True
+                fans = True; playback = True; platform = True
+            mt = ml = mz = ms = mj = mi = mo = 0
+            if connector:   mt += 2; ml += 1
+            if hexahedron:  mt += 2; ml += 1; mz += 1
+            if fans:        mt += 2; ml += 1; mz += 1; ms += 1
+            if playback:    mt += 2; mj += 1; ms += 1; mz += 1
+            if platform:    mt += 2; ml += 1; mz += 1; mi += 1; mo += 1
+    elif reusable:
         # ── Reusable mode: pieces are returned after use ──────────────
         # Green: player only needs enough for the costliest single gate.
         gate_costs: list[dict] = []
@@ -128,65 +194,66 @@ def has_requirements(
         gl = max((g.get("l", 0) for g in gate_costs), default=0)
         gt = max((g.get("t", 0) for g in gate_costs), default=0)
 
-        # Golden: no pair-budgeting — max per piece across requested tools.
-        tool_costs: list[dict] = []
-        if connector:  tool_costs.append({"t": 2, "l": 1})
-        if hexahedron: tool_costs.append({"t": 2, "l": 1, "z": 1})
-        if fans:       tool_costs.append({"t": 2, "l": 1, "z": 1, "s": 1})
-        if playback:   tool_costs.append({"t": 2, "j": 1, "s": 1, "z": 1})
-        if platform:   tool_costs.append({"t": 2, "l": 1, "z": 1, "i": 1, "o": 1})
-        mt = max((c.get("t", 0) for c in tool_costs), default=0)
-        ml = max((c.get("l", 0) for c in tool_costs), default=0)
-        mz = max((c.get("z", 0) for c in tool_costs), default=0)
-        ms = max((c.get("s", 0) for c in tool_costs), default=0)
-        mj = max((c.get("j", 0) for c in tool_costs), default=0)
-        mi = max((c.get("i", 0) for c in tool_costs), default=0)
-        mo = max((c.get("o", 0) for c in tool_costs), default=0)
+        # Golden: skip when mechanics are shuffled (already checked above)
+        if shuffle_mechanics:
+            mt = ml = mz = ms = mj = mi = mo = 0
+        else:
+            tool_costs: list[dict] = []
+            if connector:  tool_costs.append({"t": 2, "l": 1})
+            if hexahedron: tool_costs.append({"t": 2, "l": 1, "z": 1})
+            if fans:       tool_costs.append({"t": 2, "l": 1, "z": 1, "s": 1})
+            if playback:   tool_costs.append({"t": 2, "j": 1, "s": 1, "z": 1})
+            if platform:   tool_costs.append({"t": 2, "l": 1, "z": 1, "i": 1, "o": 1})
+            mt = max((c.get("t", 0) for c in tool_costs), default=0)
+            ml = max((c.get("l", 0) for c in tool_costs), default=0)
+            mz = max((c.get("z", 0) for c in tool_costs), default=0)
+            ms = max((c.get("s", 0) for c in tool_costs), default=0)
+            mj = max((c.get("j", 0) for c in tool_costs), default=0)
+            mi = max((c.get("i", 0) for c in tool_costs), default=0)
+            mo = max((c.get("o", 0) for c in tool_costs), default=0)
     else:
         # ── Single-use mode: pieces are consumed ──────────────────────
-        # Pair tools that share a golden-tetromino pool.
-        # Connector & Hexahedron are both purchasable at A1 Gate level.
-        # Fans & Playback are both purchasable at B Gate level.
-        # Since golden tetrominoes are single-use, the player can unlock
-        # either tool of a pair first.  If the logic only budgets for one
-        # tool, the player could have already spent those pieces on its
-        # partner, leaving the checked tool unaffordable.  Budgeting for
-        # the whole pair prevents the tracker from marking both sets of
-        # locations as reachable when the player can only afford one.
-        if connector or hexahedron:
-            connector = True
-            hexahedron = True
-        if fans or playback:
-            connector = True
-            hexahedron = True
-            fans = True
-            playback = True
-        if platform:
-            connector = True
-            hexahedron = True
-            fans = True
-            playback = True
-            platform = True
+        # Pair tools that share a golden-tetromino pool (only when not shuffled).
+        if not shuffle_mechanics:
+            if connector or hexahedron:
+                connector = True
+                hexahedron = True
+            if fans or playback:
+                connector = True
+                hexahedron = True
+                fans = True
+                playback = True
+            if platform:
+                connector = True
+                hexahedron = True
+                fans = True
+                playback = True
+                platform = True
 
         # Cumulative Green cost (gates)
         gj = gz = gi = gl = gt = 0
         if need_a1:  gj += 2; gz += 1                       # A1 Gate
         if need_a:   
             gj += 1; gi += 1; gl += 1; gz += 1     # A Gate
-            connector = True; hexahedron = True
+            if not shuffle_mechanics:
+                connector = True; hexahedron = True
         if need_b:   gt += 2; gz += 1; gi += 1; gl += 1     # B Gate
         if need_c:   
             gt += 2; gj += 2; gl += 1; gz += 1     # C Gate
-            connector = True; hexahedron = True
-            fans = True; playback = True
+            if not shuffle_mechanics:
+                connector = True; hexahedron = True
+                fans = True; playback = True
 
-        # Cumulative Golden cost (tools)
-        mt = ml = mz = ms = mj = mi = mo = 0
-        if connector:   mt += 2; ml += 1
-        if hexahedron:  mt += 2; ml += 1; mz += 1
-        if fans:        mt += 2; ml += 1; mz += 1; ms += 1
-        if playback:    mt += 2; mj += 1; ms += 1; mz += 1
-        if platform:    mt += 2; ml += 1; mz += 1; mi += 1; mo += 1
+        # Cumulative Golden cost (tools) — skip when mechanics are shuffled
+        if shuffle_mechanics:
+            mt = ml = mz = ms = mj = mi = mo = 0
+        else:
+            mt = ml = mz = ms = mj = mi = mo = 0
+            if connector:   mt += 2; ml += 1
+            if hexahedron:  mt += 2; ml += 1; mz += 1
+            if fans:        mt += 2; ml += 1; mz += 1; ms += 1
+            if playback:    mt += 2; mj += 1; ms += 1; mz += 1
+            if platform:    mt += 2; ml += 1; mz += 1; mi += 1; mo += 1
 
     return (
         _count(state, player, GREEN_J)  >= gj and
@@ -255,11 +322,16 @@ def can_open_tower_floor(
 #  Ascension (Tower) – cumulative red-piece check
 # ═══════════════════════════════════════════════════════════════════════════
 
-def can_ascend(state: CollectionState, player: int, reusable: bool = False) -> bool:
+def can_ascend(
+    state: CollectionState, player: int,
+    reusable: bool = False,
+    shuffle_mechanics: bool = False,
+    shuffle_gates: bool = False,
+) -> bool:
     """Ascension goal – climb all 5 tower floors.
 
     Requires:
-      * World A Gate for tower access
+      * World A Gate for tower access (unless shuffle_gates)
       * All five tools (Connector, Hexahedron, Fans, Playback, Platform)
       * Enough red pieces for all 5 doors
 
@@ -269,7 +341,9 @@ def can_ascend(state: CollectionState, player: int, reusable: bool = False) -> b
     """
     # Tools automatically pull in gates: A1+A (Connector/Hex) + B (Fans/Playback) + C (Platform)
     if not has_requirements(
-        state, player, reusable=reusable, in_region="a",
+        state, player, reusable=reusable,
+        shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates,
+        in_region="a",
         connector=True, hexahedron=True,
         fans=True, playback=True, platform=True,
     ):
@@ -309,20 +383,36 @@ def set_rules(world) -> None:
     player = world.player
     multiworld = world.multiworld
     reusable = bool(world.options.reusable_tetrominos.value)
+    shuffle_mechanics = bool(world.options.shuffle_mechanics.value)
+    shuffle_gates = bool(world.options.shuffle_world_gates.value)
 
     # ── Entrance rules ────────────────────────────────────────────────
-    multiworld.get_entrance("World A1 -> World A", player).access_rule = \
-        lambda state: has_requirements(state, player, reusable=reusable, in_region="a")
+    # When shuffle_world_gates is on, entrance rules check for gate items.
+    # Otherwise they check for green-tetromino costs.
+    if shuffle_gates:
+        multiworld.get_entrance("World A1 -> World A", player).access_rule = \
+            lambda state: (
+                state.has("World A1 Gate", player) and
+                state.has("World A Gate", player)
+            )
+        multiworld.get_entrance("World A -> World B", player).access_rule = \
+            lambda state: state.has("World B Gate", player)
+        multiworld.get_entrance("World A -> World C", player).access_rule = \
+            lambda state: state.has("World C Gate", player)
+    else:
+        multiworld.get_entrance("World A1 -> World A", player).access_rule = \
+            lambda state: has_requirements(state, player, reusable=reusable, in_region="a")
 
-    multiworld.get_entrance("World A -> World B", player).access_rule = \
-        lambda state: has_requirements(state, player, reusable=reusable, in_region="b")
+        multiworld.get_entrance("World A -> World B", player).access_rule = \
+            lambda state: has_requirements(state, player, reusable=reusable, in_region="b")
 
-    multiworld.get_entrance("World A -> World C", player).access_rule = \
-        lambda state: has_requirements(state, player, reusable=reusable, in_region="c")
+        multiworld.get_entrance("World A -> World C", player).access_rule = \
+            lambda state: has_requirements(state, player, reusable=reusable, in_region="c")
 
-    
     multiworld.completion_condition[player] = \
-        lambda state: can_ascend(state, player, reusable=reusable)
+        lambda state: can_ascend(state, player, reusable=reusable,
+                                 shuffle_mechanics=shuffle_mechanics,
+                                 shuffle_gates=shuffle_gates)
 
 
 def set_location_rules(world) -> None:
@@ -335,6 +425,8 @@ def set_location_rules(world) -> None:
     player = world.player
     multiworld = world.multiworld
     reusable = bool(world.options.reusable_tetrominos.value)
+    shuffle_mechanics = bool(world.options.shuffle_mechanics.value)
+    shuffle_gates = bool(world.options.shuffle_world_gates.value)
 
     def loc(name: str):
         return multiworld.get_location(name, player)
@@ -342,177 +434,177 @@ def set_location_rules(world) -> None:
     # ── World A1 – two locations behind the A1 Gate ───────────────────
     for name in ["World A1 Golden L", "World A1 Green I"]:
         set_rule(loc(name),
-                 lambda state: has_requirements(state, player, reusable=reusable, a1_gate=True))
+                 lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, a1_gate=True))
 
     # ── World A4 – Connector ──────────────────────────────────────────
     for name in ["World A4 Golden Z 1", "World A4 Golden Z 2",
                  "World A4 Golden T 1", "World A4 Golden T 2"]:
         set_rule(loc(name),
-                 lambda state: has_requirements(state, player, reusable=reusable, in_region="a",
+                 lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="a",
                                                 connector=True))
 
     # ── World A5 ──────────────────────────────────────────────────────
     for name in ["World A5 Red Z", "World A5 Green I"]:
         set_rule(loc(name),
-                 lambda state: has_requirements(state, player, reusable=reusable, in_region="a",
+                 lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="a",
                                                 hexahedron=True))
     for name in ["World A5 Green T 1", "World A5 Green T 2", "World A5 Green L"]:
         set_rule(loc(name),
-                 lambda state: has_requirements(state, player, reusable=reusable, in_region="a",
+                 lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="a",
                                                 connector=True, hexahedron=True))
 
     # ── World A6 ──────────────────────────────────────────────────────
     set_rule(loc("World A6 Green Z"),
-             lambda state: has_requirements(state, player, reusable=reusable, in_region="a"))
+             lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="a"))
     for name in ["World A6 Red L 1", "World A6 Red Z"]:
         set_rule(loc(name),
-                 lambda state: has_requirements(state, player, reusable=reusable, in_region="a",
+                 lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="a",
                                                 connector=True))
     set_rule(loc("World A6 Red L 2"),
-             lambda state: has_requirements(state, player, reusable=reusable, in_region="a",
+             lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="a",
                                             connector=True, hexahedron=True))
 
     # ── World A7 ──────────────────────────────────────────────────────
     for name in ["World A7 Green L", "World A7 Red T",
                  "World A7 Red O", "World A7 Green T"]:
         set_rule(loc(name),
-                 lambda state: has_requirements(state, player, reusable=reusable, in_region="a",
+                 lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="a",
                                                 connector=True))
     set_rule(loc("World A7 Red L"),
-             lambda state: has_requirements(state, player, reusable=reusable, in_region="a",
+             lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="a",
                                             connector=True, hexahedron=True))
 
     # ── World B1 ──────────────────────────────────────────────────────
     for name in ["World B1 Golden L", "World B1 Golden Z", "World B1 Golden S"]:
         set_rule(loc(name),
-                 lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
+                 lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="b",
                                                 connector=True))
     for name in ["World B1 Golden T 1", "World B1 Golden T 2"]:
         set_rule(loc(name),
-                 lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
+                 lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="b",
                                                 hexahedron=True))
 
     # ── World B2 ──────────────────────────────────────────────────────
     set_rule(loc("World B2 Red L"),
-             lambda state: has_requirements(state, player, reusable=reusable, in_region="b"))
+             lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="b"))
     set_rule(loc("World B2 Golden S"),
-             lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
+             lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="b",
                                             connector=True))
     set_rule(loc("World B2 Golden T"),
-             lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
+             lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="b",
                                             hexahedron=True, fans=True))
     set_rule(loc("World B2 Golden Z"),
-             lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
+             lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="b",
                                             hexahedron=True, connector=True,
                                             fans=True))
 
     # ── World B3 ──────────────────────────────────────────────────────
     set_rule(loc("World B3 Golden T"),
-             lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
+             lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="b",
                                             hexahedron=True, fans=True))
     set_rule(loc("World B3 Golden J"),
-             lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
+             lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="b",
                                             hexahedron=True, connector=True,
                                             fans=True))
     set_rule(loc("World B3 Red T"),
-             lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
+             lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="b",
                                             hexahedron=True, fans=True))
     set_rule(loc("World B3 Red L"),
-             lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
+             lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="b",
                                             hexahedron=True, fans=True))
 
     # ── World B4 ──────────────────────────────────────────────────────
     set_rule(loc("World B4 Red T 1"),
-             lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
+             lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="b",
                                             hexahedron=True, connector=True))
     set_rule(loc("World B4 Red T 2"),
-             lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
+             lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="b",
                                             hexahedron=True, playback=True))
     set_rule(loc("World B4 Green T"),
-             lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
+             lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="b",
                                             playback=True))
     set_rule(loc("World B4 Green J"),
-             lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
+             lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="b",
                                             playback=True))
     set_rule(loc("World B4 Red L 1"),
-             lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
+             lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="b",
                                             hexahedron=True, connector=True,
                                             fans=True))
     set_rule(loc("World B4 Red L 2"),
-             lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
+             lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="b",
                                             playback=True, connector=True))
 
     # ── World B5 ──────────────────────────────────────────────────────
     set_rule(loc("World B5 Red I"),
-             lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
+             lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="b",
                                             hexahedron=True, connector=True,
                                             fans=True, playback=True))
     set_rule(loc("World B5 Red L"),
-             lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
+             lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="b",
                                             playback=True))
     set_rule(loc("World B5 Red S"),
-             lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
+             lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="b",
                                             hexahedron=True, connector=True,
                                             fans=True))
     set_rule(loc("World B5 Green J"),
-             lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
+             lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="b",
                                             hexahedron=True, connector=True,
                                             fans=True))
     set_rule(loc("World B5 Red Z"),
-             lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
+             lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="b",
                                             hexahedron=True, connector=True,
                                             fans=True))
 
     # ── World B6 ──────────────────────────────────────────────────────
     set_rule(loc("World B6 Red I"),
-             lambda state: has_requirements(state, player, reusable=reusable, in_region="b"))
+             lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="b"))
     for name in ["World B6 Golden T", "World B6 Golden L"]:
         set_rule(loc(name),
-                 lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
+                 lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="b",
                                                 connector=True))
 
     # ── World B7 ──────────────────────────────────────────────────────
     set_rule(loc("World B7 Red J"),
-             lambda state: has_requirements(state, player, reusable=reusable, in_region="b"))
+             lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="b"))
     set_rule(loc("World B7 Red I"),
-             lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
+             lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="b",
                                             hexahedron=True, connector=True,
                                             fans=True))
     set_rule(loc("World B7 Golden O"),
-             lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
+             lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="b",
                                             hexahedron=True))
     set_rule(loc("World B7 Golden I"),
-             lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
+             lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="b",
                                             connector=True))
 
     # ── World C1 ──────────────────────────────────────────────────────
     set_rule(loc("World C1 Red Z"),
-             lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
+             lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="c",
                                             hexahedron=True, connector=True,
                                             fans=True))
     set_rule(loc("World C1 Red J"),
-             lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
+             lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="c",
                                             hexahedron=True, connector=True,
                                             fans=True))
     set_rule(loc("World C1 Red I"),
-             lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
+             lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="c",
                                             connector=True))
     set_rule(loc("World C1 Red T"),
-             lambda state: has_requirements(state, player, reusable=reusable, in_region="c"))
+             lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="c"))
 
     # ── World C2 ──────────────────────────────────────────────────────
     set_rule(loc("World C2 Red Z"),
-             lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
+             lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="c",
                                             playback=True, platform=True))
     set_rule(loc("World C2 Red O"),
-             lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
+             lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="c",
                                             hexahedron=True, connector=True,
                                             playback=True, platform=True))
     set_rule(loc("World C2 Red T"),
-             lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
+             lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="c",
                                             hexahedron=True, connector=True))
     set_rule(loc("World C2 Red S"),
-             lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
+             lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="c",
                                             hexahedron=True, playback=True,
                                             platform=True))
 
@@ -520,211 +612,211 @@ def set_location_rules(world) -> None:
     for name in ["World C3 Red J", "World C3 Red O",
                  "World C3 Red Z", "World C3 Red T"]:
         set_rule(loc(name),
-                 lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
+                 lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="c",
                                                 hexahedron=True,
                                                 connector=True, fans=True))
 
     # ── World C4 ──────────────────────────────────────────────────────
     set_rule(loc("World C4 Red T 1"),
-             lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
+             lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="c",
                                             connector=True))
     set_rule(loc("World C4 Red I"),
-             lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
+             lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="c",
                                             hexahedron=True, connector=True))
     set_rule(loc("World C4 Red S"),
-             lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
+             lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="c",
                                             hexahedron=True, connector=True,
                                             playback=True, platform=True))
     set_rule(loc("World C4 Red T 2"),
-             lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
+             lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="c",
                                             hexahedron=True, connector=True,
                                             fans=True))
 
     # ── World C5 ──────────────────────────────────────────────────────
     set_rule(loc("World C5 Red I"),
-             lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
+             lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="c",
                                             hexahedron=True, connector=True,
                                             fans=True, playback=True))
     set_rule(loc("World C5 Red O 1"),
-             lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
+             lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="c",
                                             hexahedron=True, connector=True,
                                             playback=True))
     set_rule(loc("World C5 Red O 2"),
-             lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
+             lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="c",
                                             hexahedron=True, connector=True,
                                             fans=True))
     set_rule(loc("World C5 Red T"),
-             lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
+             lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="c",
                                             hexahedron=True, connector=True))
 
     # ── World C6 ──────────────────────────────────────────────────────
     set_rule(loc("World C6 Red S"),
-             lambda state: has_requirements(state, player, reusable=reusable, in_region="c"))
+             lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="c"))
     set_rule(loc("World C6 Red J"),
-             lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
+             lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="c",
                                             hexahedron=True, connector=True))
     set_rule(loc("World C6 Red O"),
-             lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
+             lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="c",
                                             connector=True, playback=True))
 
     # ── World C7 ──────────────────────────────────────────────────────
     set_rule(loc("World C7 Red T 1"),
-             lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
+             lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="c",
                                             hexahedron=True, connector=True,
                                             fans=True))
     set_rule(loc("World C7 Red O"),
-             lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
+             lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="c",
                                             hexahedron=True, fans=True))
     set_rule(loc("World C7 Red T 2"),
-             lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
+             lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="c",
                                             connector=True, playback=True))
     set_rule(loc("World C7 Red L"),
-             lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
+             lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="c",
                                             hexahedron=True, connector=True, fans=True))
 
     # ── Purple Sigils (only present when randomise_purple_sigils is on) ──
     if bool(world.options.randomise_purple_sigils.value):
         # World A sigils
         set_rule(loc("World A4 Purple Sigil"),
-                 lambda state: has_requirements(state, player, reusable=reusable, in_region="a",
+                 lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="a",
                                                 connector=True))
         set_rule(loc("World A5 Purple Sigil"),
-                 lambda state: has_requirements(state, player, reusable=reusable, in_region="a",
+                 lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="a",
                                                 hexahedron=True))
         set_rule(loc("World A6 Purple Sigil"),
-                 lambda state: has_requirements(state, player, reusable=reusable, in_region="a",
+                 lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="a",
                                                 connector=True))
         set_rule(loc("World A7 Purple Sigil"),
-                 lambda state: has_requirements(state, player, reusable=reusable, in_region="a",
+                 lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="a",
                                                 connector=True))
         # World B sigils
         set_rule(loc("World B1 Purple Sigil 2"),
-                 lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
+                 lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="b",
                                                 hexahedron=True))
         set_rule(loc("World B2 Purple Sigil"),
-                 lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
+                 lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="b",
                                                 connector=True))
         set_rule(loc("World B3 Purple Sigil 2"),
-                 lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
+                 lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="b",
                                                 hexahedron=True, fans=True))
         set_rule(loc("World B4 Purple Sigil 1"),
-                 lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
+                 lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="b",
                                                 playback=True))
         set_rule(loc("World B4 Purple Sigil 2"),
-                 lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
+                 lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="b",
                                                 connector=True))
         set_rule(loc("World B5 Purple Sigil"),
-                 lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
+                 lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="b",
                                                 connector=True, hexahedron=True,
                                                 fans=True))
         set_rule(loc("World B7 Purple Sigil"),
-                 lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
+                 lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="b",
                                                 hexahedron=True))
 
     # ── Stars (only present when randomise_stars is on) ───────────────
     if bool(world.options.randomise_stars.value):
         # World Stars (A1 Star, A2 Star, A3 Stars need no tools beyond region)
         set_rule(loc("World A4 Star"),
-                 lambda state: has_requirements(state, player, reusable=reusable, in_region="a",
+                 lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="a",
                                                 connector=True))
         set_rule(loc("World A5 Star 1"),
-                 lambda state: has_requirements(state, player, reusable=reusable, in_region="a",
+                 lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="a",
                                                 connector=True))
         set_rule(loc("World A5 Star 2"),
-                 lambda state: has_requirements(state, player, reusable=reusable, in_region="a",
+                 lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="a",
                                                 hexahedron=True))
         set_rule(loc("World A6 Star"),
-                 lambda state: has_requirements(state, player, reusable=reusable, in_region="a",
+                 lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="a",
                                                 hexahedron=True))
         set_rule(loc("World A7 Star"),
-                 lambda state: has_requirements(state, player, reusable=reusable, in_region="a",
+                 lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="a",
                                                 connector=True))
         # World B stars
         set_rule(loc("World B1 Star"),
-                 lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
+                 lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="b",
                                                 connector=True))
         set_rule(loc("World B2 Star"),
-                 lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
+                 lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="b",
                                                 connector=True, hexahedron=True, fans=True))
         set_rule(loc("World B3 Star"),
-                 lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
+                 lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="b",
                                                 connector=True, hexahedron=True,
                                                 fans=True))
         set_rule(loc("World B4 Star 1"),
-                 lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
+                 lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="b",
                                                 connector=True, hexahedron=True))
         set_rule(loc("World B4 Star 2"),
-                 lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
+                 lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="b",
                                                 connector=True, hexahedron=True,
                                                 fans=True))
         set_rule(loc("World B5 Star"),
-                 lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
+                 lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="b",
                                                 connector=True, hexahedron=True,
                                                 fans=True))
         set_rule(loc("World B7 Star 1"),
-                 lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
+                 lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="b",
                                                 hexahedron=True, fans=True))
         set_rule(loc("World B7 Star 2"),
-                 lambda state: has_requirements(state, player, reusable=reusable, in_region="b",
+                 lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="b",
                                                 connector=True, hexahedron=True,
                                                 fans=True))
         # World C stars
         set_rule(loc("World C1 Star"),
-                 lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
+                 lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="c",
                                                 connector=True))
         set_rule(loc("World C2 Star"),
-                 lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
+                 lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="c",
                                                 hexahedron=True, playback=True,
                                                 platform=True))
         set_rule(loc("World C3 Star"),
-                 lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
+                 lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="c",
                                                 connector=True, hexahedron=True,
                                                 fans=True))
         set_rule(loc("World C4 Star 1"),
-                 lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
+                 lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="c",
                                                 connector=True, hexahedron=True,
                                                 playback=True, platform=True))
         set_rule(loc("World C4 Star 2"),
-                 lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
+                 lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="c",
                                                 connector=True, hexahedron=True,
                                                 fans=True))
         set_rule(loc("World C5 Star 1"),
-                 lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
+                 lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="c",
                                                 connector=True, hexahedron=True,
                                                 fans=True, playback=True))
         set_rule(loc("World C5 Star 2"),
-                 lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
+                 lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="c",
                                                 connector=True, hexahedron=True,
                                                 fans=True, playback=True))
         set_rule(loc("World C5 Star 3"),
-                 lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
+                 lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="c",
                                                 connector=True, hexahedron=True))
         set_rule(loc("World C6 Star"),
-                 lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
+                 lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="c",
                                                 connector=True, playback=True))
         set_rule(loc("World C7 Star"),
-                 lambda state: has_requirements(state, player, reusable=reusable, in_region="c",
+                 lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="c",
                                                 connector=True, hexahedron=True,
                                                 fans=True))
         # Messenger Island – requires 24 Purple Sigils (only when both options on)
         if bool(world.options.randomise_purple_sigils.value):
             set_rule(loc("Messenger Island Star"),
                      lambda state: (
-                         has_requirements(state, player, reusable=reusable, in_region="c") and
+                         has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="c") and
                          state.count("Purple Sigil", player) >= 24
                      ))
         else:
             set_rule(loc("Messenger Island Star"),
-                     lambda state: has_requirements(state, player, reusable=reusable, in_region="c", 
+                     lambda state: has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="c", 
                        connector=True, hexahedron=True, 
                        fans=True, playback=True)) 
         # Tower Star – all tools + all 5 tower floors
         set_rule(loc("Tower Star"),
-                 lambda state: can_ascend(state, player, reusable=reusable))
+                 lambda state: can_ascend(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates))
         # World Hub Star – C gate + connector + tower floor 1
         set_rule(loc("World Hub Star"),
                  lambda state: (
-                     has_requirements(state, player, reusable=reusable, in_region="c",
+                     has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="c",
                                       connector=True) and
                      can_open_tower_floor(state, player, 1, reusable=reusable)
                  ))
@@ -739,7 +831,7 @@ def set_location_rules(world) -> None:
             if randomise_stars:
                 return state.count("Star", player) >= 30
             return has_requirements(
-                state, player, reusable=reusable, in_region="c",
+                state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="c",
                 connector=True, hexahedron=True,
                 fans=True, playback=True, platform=True,
             )
@@ -748,20 +840,20 @@ def set_location_rules(world) -> None:
         # ES1 – no extra tools
         set_rule(loc("World A Bonus ES1"),
                  lambda state: (
-                     has_requirements(state, player, reusable=reusable, in_region="a") and
+                     has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="a") and
                      _bonus_prereq(state)
                  ))
         # ES3 – Fans
         set_rule(loc("World A Bonus ES3"),
                  lambda state: (
-                     has_requirements(state, player, reusable=reusable, in_region="a",
+                     has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="a",
                                       fans=True) and
                      _bonus_prereq(state)
                  ))
         # EL1 – no extra tools
         set_rule(loc("World A Bonus EL1"),
                  lambda state: (
-                     has_requirements(state, player, reusable=reusable, in_region="a") and
+                     has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="a") and
                      _bonus_prereq(state)
                  ))
 
@@ -769,21 +861,21 @@ def set_location_rules(world) -> None:
         # ES2 – Connector
         set_rule(loc("World B Bonus ES2"),
                  lambda state: (
-                     has_requirements(state, player, reusable=reusable, in_region="b",
+                     has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="b",
                                       connector=True) and
                      _bonus_prereq(state)
                  ))
         # EL2 – Connector
         set_rule(loc("World B Bonus EL2"),
                  lambda state: (
-                     has_requirements(state, player, reusable=reusable, in_region="b",
+                     has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="b",
                                       connector=True) and
                      _bonus_prereq(state)
                  ))
         # EL3 – Connector + Playback
         set_rule(loc("World B Bonus EL3"),
                  lambda state: (
-                     has_requirements(state, player, reusable=reusable, in_region="b",
+                     has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="b",
                                       connector=True, playback=True) and
                      _bonus_prereq(state)
                  ))
@@ -792,14 +884,14 @@ def set_location_rules(world) -> None:
         # ES4 – Hexahedron + Connector
         set_rule(loc("World C Bonus ES4"),
                  lambda state: (
-                     has_requirements(state, player, reusable=reusable, in_region="c",
+                     has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="c",
                                       hexahedron=True, connector=True) and
                      _bonus_prereq(state)
                  ))
         # EL4 – Connector + Hexahedron + Playback + Platform
         set_rule(loc("World C Bonus EL4"),
                  lambda state: (
-                     has_requirements(state, player, reusable=reusable, in_region="c",
+                     has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="c",
                                       connector=True, hexahedron=True,
                                       playback=True, platform=True) and
                      _bonus_prereq(state)
@@ -807,7 +899,7 @@ def set_location_rules(world) -> None:
         # EO1 – Hexahedron + Connector
         set_rule(loc("World C Bonus EO1"),
                  lambda state: (
-                     has_requirements(state, player, reusable=reusable, in_region="c",
+                     has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="c",
                                       hexahedron=True, connector=True) and
                      _bonus_prereq(state)
                  ))
