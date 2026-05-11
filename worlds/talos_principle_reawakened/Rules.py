@@ -120,10 +120,17 @@ def has_requirements(
             return False
 
     # ── Which gates must be open? ─────────────────────────────────────
-    need_a1 = a1_gate or in_region in ("a", "b", "c")
-    need_a  = in_region in ("b", "c")
-    need_b  = in_region in ("b", "c")  # reaching World C passes through the B gate
-    need_c  = in_region == "c"
+    if shuffle_gates:
+        # When shuffling gates, world B and C can be done in either order after the world A gate
+        need_a1 = a1_gate or in_region in ("a")
+        need_a  = in_region in ("b", "c")
+        need_b  = in_region == "b"
+        need_c  = in_region == "c"
+    else:
+        need_a1 = a1_gate or in_region in ("a", "b", "c")
+        need_a  = in_region in ("b", "c")
+        need_b  = in_region in ("b", "c")  # reaching World C passes through the B gate
+        need_c  = in_region == "c"
 
     # Tool gate prerequisites (only when gates are NOT shuffled items —
     # when gates are shuffled the entrance rules handle gate access)
