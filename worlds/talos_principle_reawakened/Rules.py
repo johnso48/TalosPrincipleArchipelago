@@ -835,7 +835,7 @@ def set_location_rules(world) -> None:
 
         star_worlds_ordered = False
         choice = random.choice(list(world.options.assume_star_order.value))
-        if choice != "unchanged":
+        if choice.lower() != "unchanged":
             star_worlds_ordered = True
             world_ordering = {
                 choice[0].upper(): 10,
