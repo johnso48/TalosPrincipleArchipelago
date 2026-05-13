@@ -838,9 +838,9 @@ def set_location_rules(world) -> None:
         if choice != "unchanged":
             star_worlds_ordered = True
             world_ordering = {
-                choice[0]: 10,
-                choice[1]: 20,
-                choice[2]: 30
+                choice[0].upper(): 10,
+                choice[1].upper(): 20,
+                choice[2].upper(): 30
             }
             world.options.assume_star_order.value = choice[0] + choice[1] + choice[2]  # for spoiler file output
 
