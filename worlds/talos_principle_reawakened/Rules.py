@@ -832,11 +832,29 @@ def set_location_rules(world) -> None:
     if bool(world.options.randomise_bonus_puzzles.value):
         randomise_stars = bool(world.options.randomise_stars.value)
 
-        def _bonus_prereq(state) -> bool:
+        star_world_order = str(world.options.assume_star_order.value)
+        star_worlds_ordered = False
+        possible_orders = ["ABC", "ACB", "BAC", "BCA", "CAB", "CBA"]
+        if star_world_order in possible_orders:
+            star_worlds_ordered = True
+            first_world = star_world_order[0]
+            second_world = star_world_order[1]
+            third_world = star_world_order[2]
+            world_ordering = {
+                first_world: 10,
+                second_world: 20,
+                third_world: 30
+            }
+
+        def _bonus_prereq(state, world) -> bool:
             """Bonus puzzles require either 30 Stars (if randomised) or
             access to all worlds + all tools (if stars are not randomised)."""
             if randomise_stars:
-                return state.count("Star", player) >= 30
+                if not star_worlds_ordered:
+                    return state.count("Star", player) >= 30
+                else:
+                    return state.count("Star", player) >= world_ordering[world]
+
             return has_requirements(
                 state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="c",
                 connector=True, hexahedron=True,
@@ -848,20 +866,20 @@ def set_location_rules(world) -> None:
         set_rule(loc("World A Bonus ES1"),
                  lambda state: (
                      has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="a") and
-                     _bonus_prereq(state)
+                     _bonus_prereq(state, "A")
                  ))
         # ES3 – Fans
         set_rule(loc("World A Bonus ES3"),
                  lambda state: (
                      has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="a",
                                       fans=True) and
-                     _bonus_prereq(state)
+                     _bonus_prereq(state, "A")
                  ))
         # EL1 – no extra tools
         set_rule(loc("World A Bonus EL1"),
                  lambda state: (
                      has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="a") and
-                     _bonus_prereq(state)
+                     _bonus_prereq(state, "A")
                  ))
 
         # World B Bonus Levels – require World B access + bonus prereq
@@ -870,21 +888,21 @@ def set_location_rules(world) -> None:
                  lambda state: (
                      has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="b",
                                       connector=True) and
-                     _bonus_prereq(state)
+                     _bonus_prereq(state, "B")
                  ))
         # EL2 – Connector
         set_rule(loc("World B Bonus EL2"),
                  lambda state: (
                      has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="b",
                                       connector=True) and
-                     _bonus_prereq(state)
+                     _bonus_prereq(state, "B")
                  ))
         # EL3 – Connector + Playback
         set_rule(loc("World B Bonus EL3"),
                  lambda state: (
                      has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="b",
                                       connector=True, playback=True) and
-                     _bonus_prereq(state)
+                     _bonus_prereq(state, "B")
                  ))
 
         # World C Bonus Levels – require World C access + bonus prereq
@@ -893,7 +911,7 @@ def set_location_rules(world) -> None:
                  lambda state: (
                      has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="c",
                                       hexahedron=True, connector=True) and
-                     _bonus_prereq(state)
+                     _bonus_prereq(state, "C")
                  ))
         # EL4 – Connector + Hexahedron + Playback + Platform
         set_rule(loc("World C Bonus EL4"),
@@ -901,12 +919,12 @@ def set_location_rules(world) -> None:
                      has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="c",
                                       connector=True, hexahedron=True,
                                       playback=True, platform=True) and
-                     _bonus_prereq(state)
+                     _bonus_prereq(state, "C")
                  ))
         # EO1 – Hexahedron + Connector
         set_rule(loc("World C Bonus EO1"),
                  lambda state: (
                      has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="c",
                                       hexahedron=True, connector=True) and
-                     _bonus_prereq(state)
+                     _bonus_prereq(state, "C")
                  ))

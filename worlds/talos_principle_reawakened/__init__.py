@@ -219,7 +219,7 @@ class TalosPrincipleWorld(World):
         if name == "Purple Sigil" and self.options.randomise_purple_sigils:
             classification = ItemClassification.progression
         # Stars become progression when bonus puzzles are randomised
-        # (bonus locations require 30 Stars to access)
+        # (bonus locations all require 30 Stars to access unless the player specifies otherwise in assume_star_order)
         if (name == "Star"
                 and self.options.randomise_stars
                 and self.options.randomise_bonus_puzzles):
@@ -234,6 +234,7 @@ class TalosPrincipleWorld(World):
             "randomise_bonus_puzzles": self.options.randomise_bonus_puzzles.value,
             "shuffle_mechanics": self.options.shuffle_mechanics.value,
             "shuffle_world_gates": self.options.shuffle_world_gates.value,
+            "assume_star_order": self.options.assume_star_order.value
         }
 
     def get_filler_item_name(self) -> str:
