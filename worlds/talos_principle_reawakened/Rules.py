@@ -35,6 +35,7 @@ Tower door cost summary (Red pieces, cumulative across 5 floors):
 
 from BaseClasses import CollectionState
 from worlds.generic.Rules import set_rule
+import random
 
 from .Items import (
     TETROMINO_COUNTS,
@@ -832,19 +833,16 @@ def set_location_rules(world) -> None:
     if bool(world.options.randomise_bonus_puzzles.value):
         randomise_stars = bool(world.options.randomise_stars.value)
 
-        star_world_order = str(world.options.assume_star_order.value)
         star_worlds_ordered = False
-        possible_orders = ["ABC", "ACB", "BAC", "BCA", "CAB", "CBA"]
-        if star_world_order in possible_orders:
+        choice = random.choice(list(world.options.assume_star_order.value))
+        if choice != "unchanged":
             star_worlds_ordered = True
-            first_world = star_world_order[0]
-            second_world = star_world_order[1]
-            third_world = star_world_order[2]
             world_ordering = {
-                first_world: 10,
-                second_world: 20,
-                third_world: 30
+                choice[0]: 10,
+                choice[1]: 20,
+                choice[2]: 30
             }
+            world.options.assume_star_order.value = choice[0] + choice[1] + choice[2]  # for spoiler file output
 
         def _bonus_prereq(state, world) -> bool:
             """Bonus puzzles require either 30 Stars (if randomised) or

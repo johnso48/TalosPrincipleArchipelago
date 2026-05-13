@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from Options import Choice, PerGameCommonOptions, Toggle, FreeText
+from Options import Choice, PerGameCommonOptions, Toggle, OptionList
 
 class StartingTetrominoCount(Choice):
     """
@@ -76,23 +76,24 @@ class ShuffleWorldGates(Toggle):
     default = 0
 
 
-class AssumeStarOrder(FreeText):
+class StarWorldOrder(OptionList):
     """
     Logic normally waits until the player has all 30 stars before requiring star world puzzles,
     because it can't predict what order the player will spend those 30 stars. This option allows
     for specifying an order to access the 3 star worlds, allowing for star puzzles to be more spread
     out throughout the seed instead of all coming into logic simultaneously.
 
-    To use this option, replace the ??? with ABC, ACB, BAC, BCA, CAB, or CBA to specify the order you
-    want logic to use for star world access. For example, BAC would put star world B in logic at 10 stars,
-    A's at 20 stars, and C's at 30 stars. You still need the appropriate world gate access and puzzle mechanics.
+    Valid options are: unchanged, ABC, ACB, BAC, BCA, CAB, and CBA.
+    As an example: "BAC" would put world B's star world in logic at 10 stars, A's at 20 stars, and C's at 30 stars.
+        They will only appear in logic if you have the appropriate hub access and puzzle mechanics unlocked.
+    "unchanged" will keep the above behavior as-is (requiring all 30 stars for star worlds).
+    Putting multiple options into the list below will result in one being chosen at random.
 
-    To keep the original behavior, leave the option as-is or set it to anything besides the 6 examples above.
-    Note that the game will not prevent you from diverging from the order you set here. Do so at your own risk.
+    Note that the game will not prevent you from diverging from any order you set here. Do so at your own risk.
     """
-    display_name = "Assume Star Order"
-    default = "???"
-
+    display_name = "Star World Order"
+    valid_keys = ["unchanged", "ABC", "ACB", "BAC", "BCA", "CAB", "CBA"]
+    default = ["unchanged"]
 
 @dataclass
 class TalosPrincipleOptions(PerGameCommonOptions):
@@ -103,4 +104,4 @@ class TalosPrincipleOptions(PerGameCommonOptions):
     randomise_bonus_puzzles: RandomiseBonusPuzzles
     shuffle_mechanics: ShuffleMechanics
     shuffle_world_gates: ShuffleWorldGates
-    assume_star_order: AssumeStarOrder
+    assume_star_order: StarWorldOrder
