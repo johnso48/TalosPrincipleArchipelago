@@ -234,7 +234,7 @@ class TalosPrincipleWorld(World):
             "randomise_bonus_puzzles": self.options.randomise_bonus_puzzles.value,
             "shuffle_mechanics": self.options.shuffle_mechanics.value,
             "shuffle_world_gates": self.options.shuffle_world_gates.value,
-            "assume_star_order": self.options.assume_star_order.value
+            "star_world_order": self.options.star_world_order.value
         }
 
     def get_filler_item_name(self) -> str:

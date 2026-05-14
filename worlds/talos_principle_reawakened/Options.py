@@ -104,4 +104,4 @@ class TalosPrincipleOptions(PerGameCommonOptions):
     randomise_bonus_puzzles: RandomiseBonusPuzzles
     shuffle_mechanics: ShuffleMechanics
     shuffle_world_gates: ShuffleWorldGates
-    assume_star_order: StarWorldOrder
+    star_world_order: StarWorldOrder
