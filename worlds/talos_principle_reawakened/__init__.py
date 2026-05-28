@@ -25,6 +25,7 @@ from .Locations import (
     REGION_WORLD_C,
     STAR_LOCATIONS,
     TalosPrincipleLocation,
+    location_groups
 )
 from .Options import TalosPrincipleOptions
 from .Rules import set_location_rules, set_rules
@@ -70,6 +71,7 @@ class TalosPrincipleWorld(World):
         **{name: data.id for name, data in BONUS_PUZZLE_LOCATIONS.items()},
     }
     item_name_groups = item_groups
+    location_name_groups = location_groups
 
     required_client_version = (0, 5, 0)
 
@@ -219,7 +221,7 @@ class TalosPrincipleWorld(World):
         if name == "Purple Sigil" and self.options.randomise_purple_sigils:
             classification = ItemClassification.progression
         # Stars become progression when bonus puzzles are randomised
-        # (bonus locations all require 30 Stars to access unless the player specifies otherwise in assume_star_order)
+        # (bonus locations all require 30 Stars to access unless the player specifies otherwise in bonus_level_order)
         if (name == "Star"
                 and self.options.randomise_stars
                 and self.options.randomise_bonus_puzzles):
@@ -228,13 +230,13 @@ class TalosPrincipleWorld(World):
 
     def fill_slot_data(self) -> Dict[str, any]:
         return {
-            "reusable_tetrominos": self.options.reusable_tetrominos.value,
+            "reusable_tetrominoes": self.options.reusable_tetrominoes.value,
             "randomise_purple_sigils": self.options.randomise_purple_sigils.value,
             "randomise_stars": self.options.randomise_stars.value,
             "randomise_bonus_puzzles": self.options.randomise_bonus_puzzles.value,
             "shuffle_mechanics": self.options.shuffle_mechanics.value,
             "shuffle_world_gates": self.options.shuffle_world_gates.value,
-            "star_world_order": self.options.star_world_order.value
+            "bonus_level_order": self.options.bonus_level_order.value
         }
 
     def get_filler_item_name(self) -> str:

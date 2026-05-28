@@ -1,6 +1,15 @@
 from dataclasses import dataclass
 
-from Options import Choice, PerGameCommonOptions, Toggle, OptionList
+from Options import Choice, PerGameCommonOptions, Toggle
+
+ORDERING_OPTIONS = {
+    1: "ABC",
+    2: "ACB",
+    3: "BAC",
+    4: "BCA",
+    5: "CAB",
+    6: "CBA"
+}
 
 class StartingTetrominoCount(Choice):
     """
@@ -15,7 +24,7 @@ class StartingTetrominoCount(Choice):
     default = 0
 
 
-class ReusableTetrominos(Toggle):
+class ReusableTetrominoes(Toggle):
     """
     When enabled, tetrominoes are returned to the player after being placed in
     a gate, tool panel, or tower door, making each piece reusable.
@@ -23,7 +32,7 @@ class ReusableTetrominos(Toggle):
     This dramatically reduces the number of tetrominoes required to reach climb
     the tower (from 90 down to ~37).
     """
-    display_name = "Reusable Tetrominos"
+    display_name = "Reusable Tetrominoes"
     default = 0
 
 
@@ -45,10 +54,11 @@ class RandomiseStars(Toggle):
 
 class RandomiseBonusPuzzles(Toggle):
     """
-    When enabled, the 9 Bonus White Tetrominos are randomised.
+    When enabled, the 9 Bonus White tetrominoes are randomised.
 
     If stars are also randomised, logic will require all 30 stars to be collected before 
-    the bonus puzzles can be completed due to the potential of unlocking them in any order
+    the bonus puzzles can be completed due to the potential of unlocking them in any order,
+    unless an order is specified in bonus_level_order below.
     """
     display_name = "Randomise Bonus Puzzles"
     default = 0
@@ -70,38 +80,63 @@ class ShuffleWorldGates(Toggle):
     four world gates (World A1 Gate, World A Gate, World B Gate, World C
     Gate) are shuffled into the item pool.
 
-    When received, the tetrominos required to open the gate will be granted to the player
+    When received, the tetrominoes required to open the gate will be granted to the player
     """
     display_name = "Shuffle Messenger Gates"
     default = 0
 
 
-class StarWorldOrder(OptionList):
+class BonusLevelOrder(Choice):
     """
-    Logic normally waits until the player has all 30 stars before requiring star world puzzles,
-    because it can't predict what order the player will spend those 30 stars. This option allows
-    for specifying an order to access the 3 star worlds, allowing for star puzzles to be more spread
-    out throughout the seed instead of all coming into logic simultaneously.
+    Logic normally requires all 30 stars to access the 3 bonus levels, to avoid potential softlocks.
+    This option allows for specifying the access order for the 3 bonus levels. If an order is specified,
+    you will still need the appropriate world access and puzzle mechanics unlocked to complete them.
 
-    Valid options are: unchanged, ABC, ACB, BAC, BCA, CAB, and CBA.
-    As an example: "BAC" would put world B's star world in logic at 10 stars, A's at 20 stars, and C's at 30 stars.
-        They will only appear in logic if you have the appropriate hub access and puzzle mechanics unlocked.
-    "unchanged" will keep the above behavior as-is (requiring all 30 stars for star worlds).
-    Putting multiple options into the list below will result in one being chosen at random.
-
-    Note that the game will not prevent you from diverging from any order you set here. Do so at your own risk.
+    For example, selecting "BAC" would put world B's bonus level into logic at 10 stars, A's at 20, and C's at 30.
+    "unchanged" keeps the above behavior, requiring all 30 stars for bonus level access.
     """
-    display_name = "Star World Order"
-    valid_keys = ["unchanged", "ABC", "ACB", "BAC", "BCA", "CAB", "CBA"]
-    default = ["unchanged"]
+    display_name = "Bonus Level Order"
+    default = 0
+    option_UNCHANGED = 0
+    option_ABC = 1
+    option_ACB = 2
+    option_BAC = 3
+    option_BCA = 4
+    option_CAB = 5
+    option_CBA = 6
+
+
+class MessengerIslandOrder(Choice):
+    """
+    Logic normally requires all 24 purple sigils to access the 3 messenger islands, to avoid potential softlocks.
+    This option allows for specifying the access order for the 3 messenger islands. If an order is specified,
+    you will still need the appropriate world access to access them.
+
+    Note this option currently has minimal value, because the only messenger island check currently is the star in
+    messenger island A. Thus, setting an order only affects how late into the seed that star may enter logic.
+    This option will gain value if messenger items are added as Archipelago items in the future.
+
+    For example, selecting "CAB" would put messenger island A's star into logic at 16 purple sigils.
+    "unchanged" keeps the above behavior, requiring all 24 purple sigils for messenger island access.
+    """
+    display_name = "Messenger Island Order"
+    default = 0
+    option_UNCHANGED = 0
+    option_ABC = 1
+    option_ACB = 2
+    option_BAC = 3
+    option_BCA = 4
+    option_CAB = 5
+    option_CBA = 6
 
 @dataclass
 class TalosPrincipleOptions(PerGameCommonOptions):
     starting_tetromino_count: StartingTetrominoCount
-    reusable_tetrominos: ReusableTetrominos
+    reusable_tetrominoes: ReusableTetrominoes
     randomise_purple_sigils: RandomisePurpleSigils
     randomise_stars: RandomiseStars
     randomise_bonus_puzzles: RandomiseBonusPuzzles
     shuffle_mechanics: ShuffleMechanics
     shuffle_world_gates: ShuffleWorldGates
-    star_world_order: StarWorldOrder
+    bonus_level_order: BonusLevelOrder
+    messenger_island_order: MessengerIslandOrder

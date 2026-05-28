@@ -35,6 +35,7 @@ Tower door cost summary (Red pieces, cumulative across 5 floors):
 
 from BaseClasses import CollectionState
 from worlds.generic.Rules import set_rule
+from .Options import ORDERING_OPTIONS
 import random
 
 from .Items import (
@@ -390,7 +391,7 @@ def set_rules(world) -> None:
     """Set entrance rules and the victory condition."""
     player = world.player
     multiworld = world.multiworld
-    reusable = bool(world.options.reusable_tetrominos.value)
+    reusable = bool(world.options.reusable_tetrominoes.value)
     shuffle_mechanics = bool(world.options.shuffle_mechanics.value)
     shuffle_gates = bool(world.options.shuffle_world_gates.value)
 
@@ -432,7 +433,7 @@ def set_location_rules(world) -> None:
     """
     player = world.player
     multiworld = world.multiworld
-    reusable = bool(world.options.reusable_tetrominos.value)
+    reusable = bool(world.options.reusable_tetrominoes.value)
     shuffle_mechanics = bool(world.options.shuffle_mechanics.value)
     shuffle_gates = bool(world.options.shuffle_world_gates.value)
 
@@ -807,11 +808,18 @@ def set_location_rules(world) -> None:
                                                 connector=True, hexahedron=True,
                                                 fans=True))
         # Messenger Island – requires 24 Purple Sigils (only when both options on)
+        sigil_req = 24
+        choice_num = world.options.messenger_island_order.value
+
+        if choice_num != 0:  # 0 = unchanged
+            ordering = ORDERING_OPTIONS[choice_num]
+            sigil_req = (ordering.upper().find('A') + 1) * 8
+
         if bool(world.options.randomise_purple_sigils.value):
             set_rule(loc("Messenger Island Star"),
                      lambda state: (
                          has_requirements(state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="c") and
-                         state.count("Purple Sigil", player) >= 24
+                         state.count("Purple Sigil", player) >= sigil_req
                      ))
         else:
             set_rule(loc("Messenger Island Star"),
@@ -832,26 +840,26 @@ def set_location_rules(world) -> None:
     # ── Bonus Puzzles (only present when randomise_bonus_puzzles is on) ───
     if bool(world.options.randomise_bonus_puzzles.value):
         randomise_stars = bool(world.options.randomise_stars.value)
+        bonus_levels_ordered = False
+        choice_num = world.options.bonus_level_order.value
 
-        star_worlds_ordered = False
-        choice = random.choice(list(world.options.assume_star_order.value))
-        if choice.lower() != "unchanged":
-            star_worlds_ordered = True
-            world_ordering = {
-                choice[0].upper(): 10,
-                choice[1].upper(): 20,
-                choice[2].upper(): 30
+        if choice_num != 0:  # 0 = unchanged
+            bonus_levels_ordered = True
+            ordering = ORDERING_OPTIONS[choice_num]
+            level_ordering = {
+                ordering[0]: 10,
+                ordering[1]: 20,
+                ordering[2]: 30,
             }
-            world.options.assume_star_order.value = choice[0] + choice[1] + choice[2]  # for spoiler file output
 
-        def _bonus_prereq(state, world) -> bool:
+        def _bonus_prereq(state, level) -> bool:
             """Bonus puzzles require either 30 Stars (if randomised) or
             access to all worlds + all tools (if stars are not randomised)."""
             if randomise_stars:
-                if not star_worlds_ordered:
+                if not bonus_levels_ordered:
                     return state.count("Star", player) >= 30
                 else:
-                    return state.count("Star", player) >= world_ordering[world]
+                    return state.count("Star", player) >= level_ordering[level]
 
             return has_requirements(
                 state, player, reusable=reusable, shuffle_mechanics=shuffle_mechanics, shuffle_gates=shuffle_gates, in_region="c",

@@ -216,3 +216,30 @@ location_name_to_id: typing.Dict[str, int] = {
     **{name: data.id for name, data in STAR_LOCATIONS.items()},
     **{name: data.id for name, data in BONUS_PUZZLE_LOCATIONS.items()},
 }
+
+# ── Item groups for hinting ────────────────────────────────────────────────
+
+location_groups = {
+    "World A Greens": {tet for tet in MAIN_LOCATIONS if "World A" in tet and "Green" in tet},
+    "World A Goldens": {tet for tet in MAIN_LOCATIONS if "World A" in tet and "Golden" in tet},
+    "World A Reds": {tet for tet in MAIN_LOCATIONS if "World A" in tet and "Red" in tet},
+    "World A Purples": {tet for tet in PURPLE_SIGIL_LOCATIONS if "World A" in tet and "Purple" in tet},
+    "World A Stars": {tet for tet in STAR_LOCATIONS if tet == "Messenger Island Star" or ("World A" in tet and "Star" in tet)},
+    "World A Bonuses": {tet for tet in BONUS_PUZZLE_LOCATIONS if "World A" in tet and "Bonus" in tet},
+
+    "World B Greens": {tet for tet in MAIN_LOCATIONS if "World B" in tet and "Green" in tet},
+    "World B Goldens": {tet for tet in MAIN_LOCATIONS if "World B" in tet and "Golden" in tet},
+    "World B Reds": {tet for tet in MAIN_LOCATIONS if "World B" in tet and "Red" in tet},
+    "World B Purples": {tet for tet in PURPLE_SIGIL_LOCATIONS if "World B" in tet and "Purple" in tet},
+    "World B Stars": {tet for tet in STAR_LOCATIONS if "World B" in tet and "Star" in tet},
+    "World B Bonuses": {tet for tet in BONUS_PUZZLE_LOCATIONS if "World B" in tet and "Bonus" in tet},
+
+    "World C Greens": {tet for tet in MAIN_LOCATIONS if "World C" in tet and "Green" in tet},
+    "World C Goldens": {tet for tet in MAIN_LOCATIONS if "World C" in tet and "Golden" in tet},
+    "World C Reds": {tet for tet in MAIN_LOCATIONS if "World C" in tet and "Red" in tet},
+    "World C Purples": {tet for tet in PURPLE_SIGIL_LOCATIONS if "World C" in tet and "Purple" in tet},
+    "World C Stars": {tet for tet in STAR_LOCATIONS if "World C" in tet and "Star" in tet},
+    "World C Bonuses": {tet for tet in BONUS_PUZZLE_LOCATIONS if "World C" in tet and "Bonus" in tet},
+
+    "Hub Stars": {"Tower Star", "World Hub Star"},
+}
