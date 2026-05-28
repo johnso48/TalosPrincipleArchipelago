@@ -234,7 +234,6 @@ location_groups = {
     "World B Stars": {tet for tet in STAR_LOCATIONS if "World B" in tet and "Star" in tet},
     "World B Bonuses": {tet for tet in BONUS_PUZZLE_LOCATIONS if "World B" in tet and "Bonus" in tet},
 
-    "World C Greens": {tet for tet in MAIN_LOCATIONS if "World C" in tet and "Green" in tet},
     "World C Goldens": {tet for tet in MAIN_LOCATIONS if "World C" in tet and "Golden" in tet},
     "World C Reds": {tet for tet in MAIN_LOCATIONS if "World C" in tet and "Red" in tet},
     "World C Purples": {tet for tet in PURPLE_SIGIL_LOCATIONS if "World C" in tet and "Purple" in tet},
