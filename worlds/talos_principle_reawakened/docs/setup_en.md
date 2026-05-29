@@ -37,7 +37,7 @@ A mod for [The Talos Principle Reawakened](https://store.steampowered.com/app/19
        "server": "archipelago.gg:portNumber",
        "slot_name": "slotName",
        "password": "",
-       "game": "The Talos Principle"
+       "game": "The Talos Principle Reawakened"
      }
      ```
 
