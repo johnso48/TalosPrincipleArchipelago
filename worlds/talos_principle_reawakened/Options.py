@@ -59,6 +59,9 @@ class ShuffleMechanics(Toggle):
     When enabled, Golden tetrominoes are removed from the item pool and the
     five mechanic tools (Connector, Hexahedron, Fans, Playback, Platform)
     are shuffled into the item pool.
+
+    This option is still in development and is not fully functional. 
+    It is recommended to leave this option disabled for now.
     """
     display_name = "Shuffle Mechanics"
     default = 0
